@@ -293,12 +293,9 @@ const MyListings = ({ embedded = false }) => {
 
   const sellerEmail = useMemo(() => getSellerEmail(location.state), [location.state]);
 
-  const [products,   setProducts]   = useState([]);
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState(null);
   const [page,       setPage]       = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total,      setTotal]      = useState(0);
   const LIMIT = 10;
 
   const [selectedProductId,      setSelectedProductId]      = useState(null);
@@ -309,46 +306,29 @@ const MyListings = ({ embedded = false }) => {
 
   const [searchRaw,    setSearchRaw]    = useState("");
   const [search,       setSearch]       = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [priceFilter,  setPriceFilter]  = useState("all");
 
   const [allProducts,   setAllProducts]   = useState([]);
   const [isFetchingAll, setIsFetchingAll] = useState(false);
 
-  const fetchAllProducts = useCallback(async () => {
+  const loadListings = useCallback(async () => {
     if (!sellerEmail) return;
-    setIsFetchingAll(true);
+    setLoading(true);
+    setError(null);
     try {
-      const first = await fetchSellerListings({ email: sellerEmail, page: 1, limit: 100, type: "mylisting" });
-      let all = [...first.products];
-      const pages = first.totalPages;
-      if (pages > 1) {
+      const result = await fetchSellerListings({
+        email: sellerEmail, page: 1, limit: 100, type: "mylisting",
+      });
+      let all = [...result.products];
+      if (result.totalPages > 1) {
         const rest = await Promise.all(
-          Array.from({ length: pages - 1 }, (_, i) =>
+          Array.from({ length: result.totalPages - 1 }, (_, i) =>
             fetchSellerListings({ email: sellerEmail, page: i + 2, limit: 100, type: "mylisting" })
           )
         );
         rest.forEach(r => { all = all.concat(r.products); });
       }
       setAllProducts(all);
-    } catch (err) {
-      console.error("[MyListings] fetchAll error:", err);
-    } finally {
-      setIsFetchingAll(false);
-    }
-  }, [sellerEmail]);
-
-  const loadListings = useCallback(async (pageNum = 1) => {
-    if (!sellerEmail) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchSellerListings({
-        email: sellerEmail, page: pageNum, limit: LIMIT, type: "mylisting",
-      });
-      setProducts(result.products);
-      setTotal(result.total);
-      setTotalPages(result.totalPages);
     } catch (err) {
       setError(err.message || "Unable to load listings. Please try again.");
     } finally {
@@ -357,9 +337,9 @@ const MyListings = ({ embedded = false }) => {
   }, [sellerEmail]);
 
   useEffect(() => {
-    if (sellerEmail) loadListings(page);
+    if (sellerEmail) loadListings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, sellerEmail]);
+  }, [sellerEmail]);
 
   const debounceRef = useRef(null);
   const handleSearchChange = (val) => {
@@ -369,7 +349,6 @@ const MyListings = ({ embedded = false }) => {
       const trimmed = val.trim().toLowerCase();
       setSearch(trimmed);
       setPage(1);
-      if (trimmed && allProducts.length === 0) fetchAllProducts();
     }, 350);
   };
 
@@ -430,7 +409,7 @@ const MyListings = ({ embedded = false }) => {
       if (!res.ok) throw new Error(`Failed to fetch product details (${res.status})`);
       const editData = await res.json();
       navigate(`/dashboard/listing/edit/${tableId}/product-info`, {
-        state: { editData, tableId, isEditMode: true },
+        state: { editData, tableId, isEditMode: true, origin: "my-listings" },
       });
     } catch (err) {
       console.error("[MyListings] Edit fetch error:", err);
@@ -482,17 +461,15 @@ const MyListings = ({ embedded = false }) => {
   };
 
   const filtered = useMemo(() => {
-    let list = search ? [...allProducts] : [...products];
+    let list = [...allProducts];
+
+    // Only show approved listings
+    list = list.filter(p => (p.status || "").toLowerCase() === "approved");
     if (search) {
       const q = search.trim().toLowerCase();
       list = list.filter(p =>
         (p.name || "").toLowerCase().includes(q) ||
         String(p.Table_ID || "").toLowerCase().includes(q)
-      );
-    }
-    if (statusFilter !== "all") {
-      list = list.filter(p =>
-        (p.status || "").toLowerCase() === statusFilter.toLowerCase()
       );
     }
     if (priceFilter !== "all") {
@@ -510,7 +487,13 @@ const MyListings = ({ embedded = false }) => {
       );
     }
     return list;
-  }, [products, allProducts, search, statusFilter, priceFilter]);
+  }, [allProducts, search, priceFilter]);
+
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / LIMIT) || 1;
+  const paginatedProducts = useMemo(() => {
+    return filtered.slice((page - 1) * LIMIT, page * LIMIT);
+  }, [filtered, page]);
 
   const fromItem = total === 0 ? 0 : (page - 1) * LIMIT + 1;
   const toItem   = Math.min(page * LIMIT, total);
@@ -558,15 +541,7 @@ const MyListings = ({ embedded = false }) => {
             />
           </div>
 
-          <select className="ml-select" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>
-            <option value="all">All Status</option>
-            <option value="approved">Approved</option>
-            <option value="pending">Pending</option>
-            <option value="under review">Under Review</option>
-            <option value="rejected">Rejected</option>
-            <option value="draft">Draft</option>
-            <option value="update_requested">Update Requested</option>
-          </select>
+
 
           <select className="ml-select" value={priceFilter} onChange={e => { setPriceFilter(e.target.value); setPage(1); }}>
             <option value="all">All Prices</option>
@@ -616,7 +591,7 @@ const MyListings = ({ embedded = false }) => {
                 <tbody>
                   {loading && Array.from({ length: LIMIT }).map((_, i) => <SkeletonRow key={i} />)}
 
-                  {!loading && filtered.map(product => {
+                  {!loading && paginatedProducts.map(product => {
                     const price         = Number(product.price) || 0;
                     const discount      = product.discount || {};
                     const finalPrice    = computeFinalPrice(price, discount);
@@ -682,7 +657,7 @@ const MyListings = ({ embedded = false }) => {
             <div className="ml-mobile-list">
               {loading && Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
 
-              {!loading && filtered.map(product => {
+              {!loading && paginatedProducts.map(product => {
                 const price      = Number(product.price) || 0;
                 const finalPrice = computeFinalPrice(price, product.discount || {});
                 return (
@@ -718,7 +693,7 @@ const MyListings = ({ embedded = false }) => {
                 <div className="ml-empty-icon"><Package size={32} /></div>
                 <h3>No Listings Found</h3>
                 <p>
-                  {search || statusFilter !== "all" || priceFilter !== "all"
+                  {search || priceFilter !== "all"
                     ? "No products match your current filters."
                     : "You haven't created any listings yet."}
                 </p>
@@ -869,7 +844,7 @@ const MyListings = ({ embedded = false }) => {
                           <div className="ml-modal-field">
                             <span className="ml-modal-label">Product ID</span>
                             <span className="ml-modal-value ml-modal-value--id">
-                              {d.Table_ID || d.productId || d.tableId || d._id || "Not Available"}
+                              {d.productId || "Not Available"}
                             </span>
                           </div>
                           <div className="ml-modal-field">
@@ -1137,7 +1112,7 @@ const MyListings = ({ embedded = false }) => {
                         handleCloseModal();
                         if (!id) { alert("Unable to determine product ID. Please try again."); return; }
                         navigate(`/dashboard/listing/edit/${id}/product-info`, {
-                          state: { editData: capturedData, tableId: id, isEditMode: true },
+                          state: { editData: capturedData, tableId: id, isEditMode: true, origin: "my-listings" },
                         });
                       }}
                     >

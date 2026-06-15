@@ -45,6 +45,53 @@ export async function checkOnboardStatus(contact) {
   const data = await res.json();
   console.log("RAW Onboard API Response:", JSON.stringify(data)); // ADD THIS
 
+  // ─── Cache sellerId if present in response ───────────────────────────
+  try {
+    const sellerObj = data?.message?.seller || data?.seller || data?.message || data || {};
+    if (sellerObj && typeof sellerObj === 'object') {
+      const resolvedSellerId =
+        sellerObj.sellerId ||
+        sellerObj.seller_id ||
+        sellerObj._id ||
+        sellerObj.id ||
+        sellerObj.uid ||
+        sellerObj.SellerID ||
+        sellerObj.Seller_ID ||
+        data?.message?.sellerId ||
+        data?.message?.seller_id ||
+        data?.sellerId ||
+        data?.seller_id ||
+        data?.SellerID ||
+        "";
+      if (resolvedSellerId && String(resolvedSellerId).trim().length > 2) {
+        const sid = String(resolvedSellerId).trim();
+        localStorage.setItem("sellerId", sid);
+        sessionStorage.setItem("sellerId", sid);
+        localStorage.setItem("__haatza_sellerId", sid);
+        sessionStorage.setItem("__haatza_sellerId", sid);
+        console.log("[OnboardStatusApi] ✅ Extracted and cached sellerId:", sid);
+      }
+    }
+  } catch (err) {
+    console.warn("[OnboardStatusApi] Failed to extract and cache sellerId:", err);
+  }
+
+  // ─── Cache seller name if present in response ───────────────────────────
+  try {
+    const sellerObj = data?.message?.seller || data?.seller || data?.message || data || {};
+    if (sellerObj && typeof sellerObj === 'object') {
+      const nameVal = sellerObj.fullName || sellerObj.name || sellerObj.companyName || sellerObj.tradeName;
+      if (nameVal && typeof nameVal === 'string' && nameVal.trim()) {
+        const cleanedName = nameVal.trim();
+        localStorage.setItem("sellerName", cleanedName);
+        sessionStorage.setItem("sellerName", cleanedName);
+        console.log("[OnboardStatusApi] ✅ Extracted and cached sellerName:", cleanedName);
+      }
+    }
+  } catch (err) {
+    console.warn("[OnboardStatusApi] Failed to extract seller name:", err);
+  }
+
   // ─── Normalise to a single lowercase string ───────────────────────────────
   // The API may return the status in several different shapes.
   // We extract whatever field carries it, then decide true/false once.

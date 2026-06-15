@@ -1,23 +1,168 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import SignInPage from "../pages/auth/SignInPage";
-import SignUpPage from "../pages/auth/SignUpPage";
-import OtpPage from "../pages/auth/OtpPage";
-import OnboardingPage from "../pages/Onboarding/Onboarding";
-import DashboardLayout from "../components/Layout/DashboardLayout/DashboardLayout"; // ← adjust path
 
+// ─── Auth & Onboarding (your existing flow) ───────────────────────────────────
+import SignInPage    from "../pages/auth/SignInPage";
+import SignUpPage    from "../pages/auth/SignUpPage";
+import OtpPage       from "../pages/auth/OtpPage";
+import OnboardingPage from "../pages/Onboarding/Onboarding";
+
+// ─── Dashboard Shell (new layout with Outlet + session validation) ─────────────
+const DashboardLayout = lazy(() => import("../components/Layout/DashboardLayout/DashboardLayout"));
+
+// ─── Dashboard & General Pages ────────────────────────────────────────────────
+const DashboardPage      = lazy(() => import("../pages/Dashboard/DashboardPage"));
+const InventoryPage      = lazy(() => import("../pages/Inventory/InventoryPage"));
+const WalletPage         = lazy(() => import("../pages/Wallet/WalletPage"));
+const NotificationsPage  = lazy(() => import("../pages/Notifications/NotificationsPage"));
+const SettingsPage       = lazy(() => import("../pages/Settings/SettingsPage"));
+const SettlementsPage    = lazy(() => import("../pages/Settlements/SettlementsPage"));
+const HelpPage           = lazy(() => import("../pages/Help/HelpPage"));
+const AdvertisementPage  = lazy(() => import("../pages/Advertisement/AdvertisementPage"));
+const CreateCampaignPage = lazy(() => import("../pages/Advertisement/CreateCampaignPage"));
+const HaatzaUpPage       = lazy(() => import("../pages/HaatzaUp/HaatzaUpPage"));
+const UploadReelPage     = lazy(() => import("../pages/HaatzaUp/UploadReelPage"));
+
+// ─── Orders Pages ─────────────────────────────────────────────────────────────
+const OrdersPage         = lazy(() => import("../pages/OrdersPage/OrdersPage"));
+const OrderDetailsPage   = lazy(() => import("../components/orders/OrderDetailsPage/OrderDetailsPage"));
+const ConfirmedOrdersPage = lazy(() => import("../components/orders/ConfirmedOrdersPage/ConfirmedOrdersPage"));
+const ShippedOrdersPage  = lazy(() => import("../components/orders/ShippedOrdersPage/ShippedOrdersPage"));
+const CancelledOrdersPage = lazy(() => import("../components/orders/CancelledOrdersPage/CancelledOrdersPage"));
+const TrackingPage       = lazy(() => import("../components/orders/TrackingPage/TrackingPage"));
+
+// ─── Listings / Product Pages ─────────────────────────────────────────────────
+const AddListing         = lazy(() => import("../pages/AddProduct/AddListing/AddListing"));
+const SelectCategory     = lazy(() => import("../pages/AddProduct/SelectCategory/SelectCategory"));
+const ProductInfo        = lazy(() => import("../pages/AddProduct/ProductInfo/ProductInfo"));
+const SpecificationPage  = lazy(() => import("../pages/AddProduct/Specificationpage/SpecificationPage"));
+const PromotionPage      = lazy(() => import("../pages/AddProduct/Promotionpage/PromotionPage"));
+const ReviewSubmitPage   = lazy(() => import("../pages/AddProduct/ReviewSubmit/ReviewSubmit"));
+const MyListings         = lazy(() => import("../pages/AddProduct/MyListings/MyListings"));
+const InProgressListings = lazy(() => import("../pages/AddProduct/InProgressListings/InProgressListings"));
+
+// ─── Loading Spinner ──────────────────────────────────────────────────────────
+const PageLoader = () => (
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "60vh",
+    width: "100%",
+  }}>
+    <div style={{
+      width: 36,
+      height: 36,
+      border: "3px solid #e5e7eb",
+      borderTopColor: "#2962ff",
+      borderRadius: "50%",
+      animation: "spin 0.8s linear infinite",
+    }} />
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+  </div>
+);
+
+// ─── Placeholder for coming-soon sidebar pages ────────────────────────────────
+const PlaceholderPage = ({ title }) => (
+  <div className="page-placeholder" style={{ padding: "40px" }}>
+    <div className="placeholder-card" style={{
+      background: "#fff",
+      padding: "40px",
+      borderRadius: "14px",
+      boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+      border: "1px solid #f1f3f6"
+    }}>
+      <h1 style={{ fontSize: "24px", fontWeight: "700", color: "#1a1d23", margin: "0 0 8px 0" }}>{title}</h1>
+      <p style={{ color: "#6b7280", margin: 0, fontSize: "14px" }}>This page is coming soon.</p>
+    </div>
+  </div>
+);
+
+// ─── Routes ───────────────────────────────────────────────────────────────────
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/signup" replace />} />
-      <Route path="/signin" element={<SignInPage />} />
-      <Route path="/signup" element={<SignUpPage />} />
-      <Route path="/otp" element={<OtpPage />} />
-      <Route path="/onboarding" element={<OnboardingPage />} />
-      <Route path="/dashboard/*" element={<DashboardLayout />} />
-      {/* Catch-all — only fires for truly unknown routes */}
-      <Route path="*" element={<Navigate to="/signup" replace />} />
-    </Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+
+        {/* ── Auth flow (your existing flow — entry point of the app) ── */}
+        <Route path="/"           element={<Navigate to="/signup" replace />} />
+        <Route path="/signin"     element={<SignInPage />} />
+        <Route path="/signup"     element={<SignUpPage />} />
+        <Route path="/otp"        element={<OtpPage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
+
+        {/* ── Dashboard shell — all protected pages live inside here ── */}
+        {/*    DashboardLayout (Document 2) renders <Outlet /> for children */}
+        {/*    and handles session validation / redirect to /signin        */}
+        <Route element={<DashboardLayout />}>
+
+          {/* Dashboard home */}
+          <Route path="/dashboard" element={<DashboardPage />} />
+
+          {/* General sidebar pages */}
+          <Route path="/dashboard/inventory"    element={<InventoryPage />} />
+          <Route path="/dashboard/settlements"  element={<SettlementsPage />} />
+          <Route path="/dashboard/settings"     element={<SettingsPage />} />
+          <Route path="/dashboard/wallet"       element={<WalletPage />} />
+          <Route path="/dashboard/notifications" element={<NotificationsPage />} />
+          <Route path="/dashboard/help"         element={<HelpPage />} />
+
+          {/* Advertisement */}
+          <Route path="/dashboard/advertisement"                 element={<AdvertisementPage />} />
+          <Route path="/dashboard/advertisement/create-campaign" element={<CreateCampaignPage />} />
+
+          {/* HaatzaUp */}
+          <Route path="/dashboard/haatzaup"             element={<HaatzaUpPage />} />
+          <Route path="/dashboard/haatzaup/upload-reel" element={<UploadReelPage />} />
+
+          {/* Orders */}
+          <Route path="/dashboard/orders"                      element={<OrdersPage />} />
+          <Route path="/dashboard/orders/details/:tableId"     element={<OrderDetailsPage />} />
+          <Route path="/dashboard/orders/tracking/:waybill"    element={<TrackingPage />} />
+          <Route path="/dashboard/orders/confirmed"            element={<ConfirmedOrdersPage />} />
+          <Route path="/dashboard/orders/shipped"              element={<ShippedOrdersPage />} />
+          <Route path="/dashboard/orders/cancelled"            element={<CancelledOrdersPage />} />
+
+          {/* Placeholder sidebar pages */}
+          <Route path="/dashboard/return-exchange"  element={<PlaceholderPage title="Return / Exchange" />} />
+          <Route path="/dashboard/returns"          element={<PlaceholderPage title="Return / Exchange" />} />
+          <Route path="/dashboard/growplan"         element={<PlaceholderPage title="Grow Plan" />} />
+          <Route path="/dashboard/productinsight"   element={<PlaceholderPage title="Product Insight" />} />
+          <Route path="/dashboard/warehouse"        element={<PlaceholderPage title="Warehouse" />} />
+          <Route path="/dashboard/influencer"       element={<PlaceholderPage title="Influencer Branding" />} />
+          <Route path="/dashboard/growthcentral"    element={<PlaceholderPage title="Growth Central" />} />
+          <Route path="/dashboard/qualityinsights"  element={<PlaceholderPage title="Quality Insights" />} />
+          <Route path="/dashboard/referandearn"     element={<PlaceholderPage title="Refer & Earn" />} />
+
+          {/* ── Listings: Create flow ── */}
+          <Route path="/dashboard/listing"                                                              element={<AddListing />} />
+          <Route path="/dashboard/listing/select-category"                                             element={<SelectCategory />} />
+          <Route path="/dashboard/listing/select-category/product-info"                               element={<ProductInfo />} />
+          <Route path="/dashboard/listing/select-category/product-info/specifications"                element={<SpecificationPage />} />
+          <Route path="/dashboard/listing/select-category/product-info/specifications/promotions"     element={<PromotionPage />} />
+          <Route path="/dashboard/listing/promotions"                                                  element={<ReviewSubmitPage />} />
+
+          {/* ── Listings: Edit flow ── */}
+          <Route path="/dashboard/listing/edit/:tableId/product-info"                                              element={<ProductInfo />} />
+          <Route path="/dashboard/listing/edit/:tableId/product-info/specifications"                               element={<SpecificationPage />} />
+          <Route path="/dashboard/listing/edit/:tableId/product-info/specifications/promotions"                    element={<PromotionPage />} />
+          <Route path="/dashboard/listing/edit/:tableId/product-info/specifications/promotions/review"             element={<ReviewSubmitPage />} />
+
+          {/* ── Listings: Views ── */}
+          <Route path="/dashboard/listing/my-listings"   element={<MyListings />} />
+          <Route path="/dashboard/listing/view-details"  element={<ReviewSubmitPage />} />
+          <Route path="/dashboard/listing/in-progress"   element={<InProgressListings />} />
+          <Route path="/dashboard/my-listings"           element={<MyListings />} />
+          <Route path="/dashboard/inprogress-listings"   element={<InProgressListings />} />
+
+        </Route>
+
+        {/* Catch-all — redirect unknown routes back to signup */}
+        <Route path="*" element={<Navigate to="/signup" replace />} />
+
+      </Routes>
+    </Suspense>
   );
 }
+
 export default AppRoutes;

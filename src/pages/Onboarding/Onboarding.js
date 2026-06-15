@@ -936,6 +936,21 @@ if (sellerId) {
       sessionStorage.setItem("userEmail", userEmail);
     }
 
+    // Cache tradeName as sellerName
+    const companyName = form.tradeName.trim();
+    if (companyName) {
+      localStorage.setItem("sellerName", companyName);
+      sessionStorage.setItem("sellerName", companyName);
+      try {
+        const currentUser = JSON.parse(sessionStorage.getItem("haatza_user") || localStorage.getItem("haatza_user") || "{}");
+        currentUser.name = companyName;
+        currentUser.email = currentUser.email || userEmail;
+        sessionStorage.setItem("haatza_user", JSON.stringify(currentUser));
+        localStorage.setItem("haatza_user", JSON.stringify(currentUser));
+      } catch {}
+      console.log("[Onboarding] ✅ sellerName saved to storage:", companyName);
+    }
+
     navigate('/dashboard');
   } else {
     setSubmitError(data?.message || 'Submission failed. Please try again.');

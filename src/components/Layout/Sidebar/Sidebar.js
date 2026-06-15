@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import ReactDOM from "react-dom";
+import { sellerService } from "../../../services/sellerService";
+import { getSellerId } from "../../../utils/sellerSession";
 import "./Sidebar.css";
 
 const KEY_TO_ROUTE = {
@@ -12,7 +14,7 @@ const KEY_TO_ROUTE = {
   settlements:     "/dashboard/settlements",
   help:            "/dashboard/help",
   advertisement:   "/dashboard/advertisement",
-  haatzup:         "/dashboard/haatzup",
+  haatzup:         "/dashboard/haatzaup",
   growplan:        "/dashboard/growplan",
   productinsight:  "/dashboard/productinsight",
   warehouse:       "/dashboard/warehouse",
@@ -279,7 +281,6 @@ function NavItem({ item, active, onClick, isCollapsed, onTooltipShow, onTooltipH
   // Touch handlers for mobile/tablet - persistent tooltip
   const handleTouchStart = useCallback((e) => {
     if (!isCollapsed || !onTooltipShow || !isTouchDevice.current) return;
-    e.preventDefault(); // Prevent scroll interference
     
     const rect = btnRef.current?.getBoundingClientRect();
     if (rect) {
@@ -384,18 +385,94 @@ function Sidebar({
   );
 
   const activeKey = (() => {
-  const path = location.pathname;
+    const path = location.pathname;
 
-  if (
-    path.includes("/listing") ||
-    path.includes("/my-listings") ||
-    path.includes("/inprogress-listings")
-  ) {
-    return "listing";
-  }
+    if (
+      path.includes("/listing") ||
+      path.includes("/my-listings") ||
+      path.includes("/inprogress-listings")
+    ) {
+      return "listing";
+    }
 
-  return ROUTE_TO_KEY[path] ?? "dashboard";
-})();
+    return ROUTE_TO_KEY[path] ?? "dashboard";
+  })();
+
+  /* ── Dynamic badge counts ─────────────────────────────────── */
+  const [menuSections, setMenuSections] = useState(NAV_SECTIONS);
+  const sellerId = getSellerId();
+
+  useEffect(() => {
+    if (!sellerId) return;
+
+    const fetchCounts = async () => {
+      try {
+        const [ordersRes, ticketsRes, notifRes, walletRes, campaignRes] = await Promise.allSettled([
+          sellerService.getSellerNewOrders(sellerId),
+          sellerService.getTickets(sellerId),
+          sellerService.getNotifications(sellerId),
+          sellerService.checkWalletBalance(sellerId),
+          sellerService.getAdvertisementSummary(sellerId),
+        ]);
+
+        let ordersCount = 0;
+        if (ordersRes.status === "fulfilled") {
+          const rawOrders = ordersRes.value?.data || ordersRes.value?.message || [];
+          ordersCount = Array.isArray(rawOrders)
+            ? rawOrders.filter(o => o.status === "new" || o.status === "pending").length
+            : (ordersRes.value?.count || 0);
+        }
+
+        let ticketsCount = 0;
+        if (ticketsRes.status === "fulfilled") {
+          const rawTickets = ticketsRes.value?.message?.data || ticketsRes.value?.data || ticketsRes.value?.tickets || [];
+          ticketsCount = Array.isArray(rawTickets)
+            ? rawTickets.filter(t => t.status !== "Closed" && t.status !== "Resolved").length
+            : 0;
+        }
+
+        let unreadNotifCount = 0;
+        if (notifRes.status === "fulfilled") {
+          const rawNotifs = notifRes.value?.message?.data || notifRes.value?.data || [];
+          unreadNotifCount = Array.isArray(rawNotifs)
+            ? rawNotifs.filter(n => !n.read && n.status !== "read").length
+            : 0;
+        }
+
+        let walletLabel = "";
+        if (walletRes.status === "fulfilled") {
+          const bal = Number(walletRes.value?.message?.RemainingBalance || walletRes.value?.RemainingBalance || 0);
+          walletLabel = `₹${bal.toFixed(2)}`;
+        }
+
+        let activeCampaigns = 0;
+        if (campaignRes.status === "fulfilled") {
+          const summary = campaignRes.value?.data || campaignRes.value?.message || {};
+          activeCampaigns = summary.activeCampaigns || summary.ActiveCampaignsCount || 0;
+        }
+
+        setMenuSections(prevSections =>
+          prevSections.map(section => ({
+            ...section,
+            items: section.items.map(item => {
+              if (item.key === "orders")        return { ...item, badge: ordersCount > 0      ? String(ordersCount)          : undefined };
+              if (item.key === "help")          return { ...item, badge: ticketsCount > 0     ? String(ticketsCount)         : undefined };
+              if (item.key === "notifications") return { ...item, badge: unreadNotifCount > 0 ? String(unreadNotifCount)     : undefined };
+              if (item.key === "wallet")        return { ...item, badge: walletLabel           ? walletLabel                 : undefined };
+              if (item.key === "advertisement") return { ...item, badge: activeCampaigns > 0  ? `${activeCampaigns} Active`  : undefined };
+              return item;
+            }),
+          }))
+        );
+      } catch (err) {
+        console.warn("[Sidebar] Error updating dynamic counts:", err);
+      }
+    };
+
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 30000);
+    return () => clearInterval(interval);
+  }, [sellerId]);
 
   /* ── Tooltip state ────────────────────────────────────────── */
   const [tooltip, setTooltip] = useState({ 
@@ -501,7 +578,7 @@ function Sidebar({
   }, [isCollapsed, onCollapseChange]);
 
   const handleToggle       = useCallback(() => setIsCollapsed(prev => !prev), []);
-    const handleItemClick = useCallback((key) => {
+  const handleItemClick    = useCallback((key) => {
     const route = KEY_TO_ROUTE[key];
     if (route) navigate(route);
   }, [navigate]);
@@ -540,7 +617,7 @@ function Sidebar({
     React.createElement("div", { className: "sidebar__divider" }),
 
     React.createElement("nav", { className: "sidebar__nav" },
-      NAV_SECTIONS.map((section) =>
+      menuSections.map((section) =>
         React.createElement("div", { key: section.heading, className: "nav-section" },
           !isCollapsed && React.createElement("p", { className: "nav-section__heading" }, section.heading),
           section.items.map((item) =>

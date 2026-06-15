@@ -211,6 +211,8 @@ const ReviewSubmitPage = () => {
     discountType = "percent",
     colourImages = {},
     confirmedColors = [],
+    origin,
+    email,
   } = location.state || {};
 
   useEffect(() => {
@@ -421,7 +423,8 @@ const isUpdate = !!(isEditMode && !isDuplicateMode && tableId && !isViewMode);
 
     // ── Step 3: build the payload ──
     let payload;
-    if (isUpdate) {
+    const shouldUseUpdatePayload = !!(isUpdate && origin !== "inprogress");
+    if (shouldUseUpdatePayload) {
       payload = buildUpdatePayload({
         tableId,
         formData,
@@ -465,6 +468,13 @@ const isUpdate = !!(isEditMode && !isDuplicateMode && tableId && !isViewMode);
     payload.sellerId      = sellerId;
     payload.sellerPinCode = Number(sellerPinCode) || 0;
 
+    // Inject DB identifier fields so backend know which record to update/save
+    if (origin === "inprogress" && tableId) {
+      payload.Id = tableId;
+      payload._id = tableId;
+      payload.Table_ID = tableId;
+    }
+
     // Always force sizeChart — this is the critical fix
     // sizeChartUrl extracted directly from specs takes priority over whatever buildCreatePayload set
     if (sizeChartUrl) {
@@ -494,7 +504,7 @@ const isUpdate = !!(isEditMode && !isDuplicateMode && tableId && !isViewMode);
 
     return payload;
 
-  }, [isUpdate, tableId, formData, images, specifications, optionFields, variants, variantPrices, promotionImage, keywords, discountType, category, subcategory, editData, colourImages, confirmedColors]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isUpdate, tableId, formData, images, specifications, optionFields, variants, variantPrices, promotionImage, keywords, discountType, category, subcategory, editData, colourImages, confirmedColors, origin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Shared post-save navigation ── */
   const navigateToInProgress = useCallback((email) => {
@@ -526,7 +536,7 @@ const isUpdate = !!(isEditMode && !isDuplicateMode && tableId && !isViewMode);
     setSubmitError("");
     try {
       const payload = await buildPayload("Under Review");
-      if (isUpdate) {
+      if (isUpdate && origin !== "inprogress") {
         await updateListing(payload);
       } else {
         await createListing(payload);
@@ -538,7 +548,7 @@ const isUpdate = !!(isEditMode && !isDuplicateMode && tableId && !isViewMode);
     } finally {
       setSubmitting(false);
     }
-  }, [buildPayload, isUpdate, navigateToInProgress, location.state?.email]);
+  }, [buildPayload, isUpdate, origin, navigateToInProgress, location.state?.email]);
 
   /* ── Save as Draft handler ── */
   const handleSaveAsDraft = useCallback(async () => {
@@ -555,7 +565,7 @@ const isUpdate = !!(isEditMode && !isDuplicateMode && tableId && !isViewMode);
       console.groupEnd();
 
       let response;
-      if (isUpdate) {
+      if (isUpdate && origin !== "inprogress") {
         response = await updateListing(payload);
       } else {
         response = await createListing(payload);
@@ -570,7 +580,7 @@ const isUpdate = !!(isEditMode && !isDuplicateMode && tableId && !isViewMode);
     } finally {
       setDraftLoading(false);
     }
-  }, [buildPayload, isUpdate, navigateToInProgress, location.state?.email]);
+  }, [buildPayload, isUpdate, origin, navigateToInProgress, location.state?.email]);
 
   /* ── Send for QC handler ── */
   const handleSendForQC = useCallback(async () => {
@@ -587,7 +597,7 @@ const isUpdate = !!(isEditMode && !isDuplicateMode && tableId && !isViewMode);
       console.groupEnd();
 
       let response;
-      if (isUpdate) {
+      if (isUpdate && origin !== "inprogress") {
         response = await updateListing(payload);
       } else {
         response = await createListing(payload);
@@ -602,7 +612,7 @@ const isUpdate = !!(isEditMode && !isDuplicateMode && tableId && !isViewMode);
     } finally {
       setQcLoading(false);
     }
-  }, [buildPayload, isUpdate, navigateToInProgress, location.state?.email]);
+  }, [buildPayload, isUpdate, origin, navigateToInProgress, location.state?.email]);
 
   const handleBack = () => {
     navigate(
@@ -619,6 +629,8 @@ const isUpdate = !!(isEditMode && !isDuplicateMode && tableId && !isViewMode);
           tableId: isDuplicateMode ? null : tableId,
           optionFields, specFieldsList, variants, variantPrices, discountType,
           confirmedColors, colourImages,
+          origin,
+          email,
         },
       }
     );
@@ -776,7 +788,7 @@ const isUpdate = !!(isEditMode && !isDuplicateMode && tableId && !isViewMode);
   <ArrowLeftIcon size={15} /> {isViewMode ? "Back to Listings" : "Back to Promotions"}
 </button>        
 
-        {isUpdate && !isViewMode && (
+        {isUpdate && !isViewMode && origin === "my-listings" && (
   <button
     className={`rsp-topright-update-btn ... ${submitting ? "rsp-topright-update-btn--loading" : ""}`}
             onClick={handleSubmit}
@@ -1228,8 +1240,8 @@ const isUpdate = !!(isEditMode && !isDuplicateMode && tableId && !isViewMode);
        </div>
       </div>
 
-      {/* INLINE ACTION BUTTONS — visible above fixed bar on create mode */}
-      {!isUpdate && !isViewMode && (
+      {/* INLINE ACTION BUTTONS — visible above fixed bar on create mode or editing from In Progress */}
+      {(!isUpdate || origin === "inprogress") && !isViewMode && (
         <div className="rsp-inline-actions">
           <button
             className={`rsp-action-btn rsp-action-btn--draft ${draftLoading ? "rsp-action-btn--loading" : ""} ${draftSuccess ? "rsp-action-btn--success" : ""}`}

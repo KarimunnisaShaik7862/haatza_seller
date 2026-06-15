@@ -72,12 +72,7 @@
   padding: 28px 32px 60px;
   color: var(--sp-text);
   box-sizing: border-box;
-  min-height: calc(100vh - 70px);
-  height: auto;
-  overflow-y: auto;
-  overflow-x: hidden;
   position: relative;
-  scroll-behavior: smooth;
   opacity: 0;
   transition: opacity 0.35s ease;
 }

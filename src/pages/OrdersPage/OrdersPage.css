@@ -1,0 +1,165 @@
+.orders-page {
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.orders-header {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.orders-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.orders-title {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0 0 4px;
+  letter-spacing: -0.02em;
+}
+
+.orders-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.orders-header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.orders-filters {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.orders-search,
+.orders-date-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1.5px solid #E5E9F5;
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  flex: 1;
+  min-width: 220px;
+  color: var(--text-muted);
+  transition: border-color 0.2s ease;
+}
+
+.orders-search:focus-within,
+.orders-date-filter:focus-within {
+  border-color: var(--primary);
+}
+
+.orders-search input,
+.orders-date-filter input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  width: 100%;
+  font-family: inherit;
+  color: var(--text-dark);
+}
+
+.orders-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  overflow-x: auto;
+}
+
+.order-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.order-tab:hover {
+  color: var(--primary);
+  background: rgba(41, 98, 255, 0.06);
+}
+
+.order-tab.active {
+  color: var(--primary);
+}
+
+.tab-badge {
+  background: rgba(41, 98, 255, 0.12);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.order-tab.active .tab-badge {
+  background: var(--primary);
+  color: #fff;
+}
+
+.tab-underline {
+  position: absolute;
+  bottom: -10px;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .orders-page {
+    padding: 16px;
+  }
+
+  .orders-header {
+    padding: 18px;
+  }
+
+  .orders-title {
+    font-size: 22px;
+  }
+
+  .orders-header-actions {
+    width: 100%;
+  }
+
+  .orders-header-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+}

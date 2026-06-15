@@ -62,16 +62,12 @@
 /* ── Root ── */
 .pi-root {
   font-family: var(--ff-body);
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 28px 32px 120px;
   color: var(--pi-text);
   box-sizing: border-box;
-  height: calc(100vh - 70px);
-  overflow-y: auto;
-  overflow-x: hidden;
   position: relative;
-  scroll-behavior: smooth;
 }
 
 /* ── Back Button ── */
@@ -680,6 +676,11 @@
   gap: 20px;
 }
 .pi-form-grid--three  { grid-template-columns: repeat(3, 1fr); }
+.pi-form-grid--three .pi-label {
+  min-height: 32px;
+  display: flex;
+  align-items: flex-end;
+}
 
 /* ── Sale grid: align columns to the bottom so both inputs sit at
       the same vertical position despite the label having different heights ── */
@@ -986,6 +987,9 @@
 
   .pi-form-grid         { grid-template-columns: 1fr; }
   .pi-form-grid--three  { grid-template-columns: 1fr; }
+  .pi-form-grid--three .pi-label {
+    min-height: auto;
+  }
 
   /* On mobile the sale grid stacks to single column;
      reset align-items so fields flow naturally */

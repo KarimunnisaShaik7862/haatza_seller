@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import SignInForm from "../../components/auth/SignInForm/SignInForm";
 import { checkSeller } from "../../api/sellerApi";
 import { checkOnboardStatus } from "../../api/OnboardStatusApi";
+import { saveUser } from "../../utils/userStore";
 function SignInPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,6 +45,8 @@ function SignInPage() {
             contactType: result.contactType,
             email:       result.email,
             phone:       result.phone,
+            fullName:    result.fullName,
+            sellerId:    result.sellerId,
           });
           setShowPassword(true);
         } else {
@@ -54,6 +57,7 @@ function SignInPage() {
               contactType: result.contactType,
               email:       result.email,
               phone:       result.phone,
+              sellerId:    result.sellerId,
             },
           });
         }
@@ -96,6 +100,25 @@ function SignInPage() {
       sessionStorage.setItem("pendingEmail", emailForStatus);
       localStorage.setItem("userEmail",      emailForStatus);
       
+      if (verifiedContact?.fullName) {
+        localStorage.setItem("sellerName", verifiedContact.fullName);
+        sessionStorage.setItem("sellerName", verifiedContact.fullName);
+        saveUser({
+          name: verifiedContact.fullName,
+          email: emailForStatus,
+          phone: verifiedContact.phone || "",
+        });
+        console.log("[SignInPage] ✅ Saved sellerName from checkseller:", verifiedContact.fullName);
+      }
+
+      if (verifiedContact?.sellerId) {
+        localStorage.setItem("sellerId", String(verifiedContact.sellerId));
+        sessionStorage.setItem("sellerId", String(verifiedContact.sellerId));
+        localStorage.setItem("__haatza_sellerId", String(verifiedContact.sellerId));
+        sessionStorage.setItem("__haatza_sellerId", String(verifiedContact.sellerId));
+        console.log("[SignInPage] ✅ Saved sellerId from verifiedContact:", verifiedContact.sellerId);
+      }
+      
       const isOnboarded = await checkOnboardStatus(emailForStatus);
 
       if (isOnboarded) {
@@ -122,6 +145,23 @@ function SignInPage() {
 
       sessionStorage.setItem("pendingEmail", emailFallback);
       localStorage.setItem("userEmail",      emailFallback);
+
+      if (verifiedContact?.fullName) {
+        localStorage.setItem("sellerName", verifiedContact.fullName);
+        sessionStorage.setItem("sellerName", verifiedContact.fullName);
+        saveUser({
+          name: verifiedContact.fullName,
+          email: emailFallback,
+          phone: verifiedContact.phone || "",
+        });
+      }
+
+      if (verifiedContact?.sellerId) {
+        localStorage.setItem("sellerId", String(verifiedContact.sellerId));
+        sessionStorage.setItem("sellerId", String(verifiedContact.sellerId));
+        localStorage.setItem("__haatza_sellerId", String(verifiedContact.sellerId));
+        sessionStorage.setItem("__haatza_sellerId", String(verifiedContact.sellerId));
+      }
 
       console.error("Onboard status check failed:", err);
       navigate("/dashboard/my-listings", {

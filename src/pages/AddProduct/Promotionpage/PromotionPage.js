@@ -496,7 +496,7 @@ const compressImage = (file) =>
     const location = useLocation();
     const {
   category, subcategory, formData, images, specifications,
-  isEditMode, isDuplicateMode, editData, tableId,
+  isEditMode, isDuplicateMode, editData, tableId, origin, email,
   optionFields    = [],
   specFieldsList  = [],
   variants        = [],
@@ -575,6 +575,8 @@ const compressImage = (file) =>
       isDuplicateMode,
       editData,
       tableId: isDuplicateMode ? null : tableId,
+      origin,
+      email,
       // CRITICAL: forward all spec/variant data to ReviewSubmitPage
       optionFields,
       specFieldsList,
@@ -599,6 +601,8 @@ const compressImage = (file) =>
         isDuplicateMode,
         editData,
         tableId: isDuplicateMode ? null : tableId,
+        origin,
+        email,
         // Forward back so user doesn't lose their work
         optionFields,
         specFieldsList,

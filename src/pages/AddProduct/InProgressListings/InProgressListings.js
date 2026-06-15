@@ -285,11 +285,6 @@ const resolveKeywords = (kw) => {
 const VISIBLE_STATUSES = new Set([
   "draft",
   "under review",
-  "pending",
-  "approved",
-  "rejected",
-  "update_requested",
-  "update requested",
 ]);
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -397,22 +392,9 @@ const InProgressListings = ({ embedded = false }) => {
      location.pathname]
   );
 
-  useEffect(() => {
-    console.group("[InProgressListings] Identity diagnostics on mount/update");
-    console.log("Fetched Seller Email (resolveSellerEmail):", sellerEmail);
-    console.log("location.state:", location.state);
-    console.log("sessionStorage pendingEmail:", sessionStorage.getItem("pendingEmail"));
-    console.log("localStorage userEmail:", localStorage.getItem("userEmail"));
-    console.log("localStorage email:", localStorage.getItem("email"));
-    console.groupEnd();
-  }, [sellerEmail, location.state]);
-
-  const [products,   setProducts]   = useState([]);
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState(null);
   const [page,       setPage]       = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total,      setTotal]      = useState(0);
   const LIMIT = 10;
 
   const [selectedProductId,      setSelectedProductId]      = useState(null);
@@ -430,9 +412,13 @@ const InProgressListings = ({ embedded = false }) => {
   const [isFetchingAll, setIsFetchingAll] = useState(false);
 
   // ── fetch helpers ────────────────────────────────────────────────────────────
-  const fetchAllProducts = useCallback(async () => {
-    if (!sellerEmail) return;
-    setIsFetchingAll(true);
+  const loadListings = useCallback(async () => {
+    if (!sellerEmail) {
+      console.warn("[InProgressListings] loadListings skipped — no sellerEmail");
+      return;
+    }
+    setLoading(true);
+    setError(null);
     try {
       const first = await fetchInProgressListings({ email: sellerEmail, page: 1, limit: 100 });
       let all = [...first.products];
@@ -445,97 +431,6 @@ const InProgressListings = ({ embedded = false }) => {
         rest.forEach(r => { all = all.concat(r.products); });
       }
       setAllProducts(all);
-
-      // ── Diagnostic: all-products status breakdown ─────────────────────────
-      console.group("[InProgressListings:fetchAllProducts] Status breakdown");
-      const byStatus = all.reduce((acc, p) => {
-        const s = p.status || "unknown";
-        acc[s] = (acc[s] || 0) + 1;
-        return acc;
-      }, {});
-      console.log("All products by status:", byStatus);
-      console.log("Total fetched:", all.length);
-      console.groupEnd();
-    } catch (err) {
-      console.error("[InProgressListings] fetchAll error:", err);
-    } finally {
-      setIsFetchingAll(false);
-    }
-  }, [sellerEmail]);
-
-  const loadListings = useCallback(async (pageNum = 1) => {
-    if (!sellerEmail) {
-      console.warn("[InProgressListings] loadListings skipped — no sellerEmail");
-      return;
-    }
-    // Resolve sellerId the same way the API does — for cross-checking
-    const resolveLocalSellerId = () => {
-      const keys = ["sellerId", "seller_id", "userId", "user_id", "user", "authUser", "currentUser", "userData", "sellerData"];
-      for (const key of keys) {
-        const raw = sessionStorage.getItem(key) || localStorage.getItem(key);
-        if (!raw) continue;
-        if (raw.length > 3 && !raw.startsWith("{") && !raw.startsWith("[")) return raw.trim();
-        try {
-          const parsed = JSON.parse(raw);
-          const val = parsed?.sellerId || parsed?.seller_id || parsed?.userId || parsed?.user?.sellerId || parsed?.data?.sellerId || null;
-          if (val) return String(val).trim();
-        } catch { /* not JSON */ }
-      }
-      return "";
-    };
-
-    const diagSellerId = resolveLocalSellerId();
-    console.group(`[InProgressListings] loadListings — page ${pageNum}`);
-    console.log("Fetched Seller Email:", sellerEmail);
-    console.log("Logged In Seller ID:", diagSellerId || "❌ NOT FOUND");
-    console.log("Page:", pageNum);
-    console.log("=== ALL STORAGE KEYS ===");
-    console.log("sessionStorage.__haatza_sellerId:", sessionStorage.getItem("__haatza_sellerId"));
-    console.log("sessionStorage.sellerId:", sessionStorage.getItem("sellerId"));
-    console.log("localStorage.__haatza_sellerId:", localStorage.getItem("__haatza_sellerId"));
-    console.log("localStorage.sellerId:", localStorage.getItem("sellerId"));
-    console.log("sessionStorage.pendingEmail:", sessionStorage.getItem("pendingEmail"));
-    console.log("localStorage.userEmail:", localStorage.getItem("userEmail"));
-    console.groupEnd();
-
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchInProgressListings({
-        email: sellerEmail, page: pageNum, limit: LIMIT,
-      });
-
-      // ── Diagnostic: what came back from the API ───────────────────────────
-      console.group("[InProgressListings:loadListings] API result");
-      console.log("In Progress Response — products:", result.products);
-      console.log("Total:", result.total, "Pages:", result.totalPages);
-      result.products.forEach((p, i) => {
-        console.log(`  [${i}] name="${p.name}" status="${p.status}" id=${p.Table_ID || p._id}`);
-      });
-
-      // FIX: log if any products would be filtered out by the old "In Progress" check
-      const wouldBeFilteredOut = result.products.filter(
-        p => (p.status || "").toLowerCase() === "in progress"
-      );
-      if (wouldBeFilteredOut.length > 0) {
-        console.warn(
-          '[InProgressListings] NOTE: These products have status "In Progress" (old value) —',
-          wouldBeFilteredOut.map(p => p.name)
-        );
-      }
-      console.groupEnd();
-
-      console.group("[InProgressListings:loadListings] Raw listings received");
-      console.log("In Progress API Response — total:", result.total, "pages:", result.totalPages);
-      console.log("Raw Listings", result.products);
-      result.products.forEach((p, i) => {
-        console.log(`  Raw[${i}] id=${p.Table_ID || p._id} name="${p.name}" status="${p.status}"`);
-      });
-      console.groupEnd();
-
-      setProducts(result.products);
-      setTotal(result.total);
-      setTotalPages(result.totalPages);
     } catch (err) {
       console.error("[InProgressListings] loadListings error:", err);
       setError(err.message || "Unable to load in-progress listings. Please try again.");
@@ -544,18 +439,10 @@ const InProgressListings = ({ embedded = false }) => {
     }
   }, [sellerEmail]);
 
-  // ── initial load + page changes ──────────────────────────────────────────────
+  // ── initial load ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (sellerEmail) {
-      loadListings(page);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, sellerEmail]);
-
-  // Extra: if email resolves after mount, trigger a fresh fetch
-  useEffect(() => {
-    if (sellerEmail) {
-      loadListings(1);
+      loadListings();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sellerEmail]);
@@ -564,10 +451,8 @@ const InProgressListings = ({ embedded = false }) => {
   useEffect(() => {
     if (location.state?.refresh && sellerEmail) {
       console.log("[InProgressListings] Auto-refresh triggered — timestamp:", location.state.timestamp);
-      // FIX: reset to page 1 so the newest item is visible immediately
       setPage(1);
-      loadListings(1);
-      fetchAllProducts();
+      loadListings();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state?.timestamp, sellerEmail]);
@@ -581,7 +466,6 @@ const InProgressListings = ({ embedded = false }) => {
       const trimmed = val.trim().toLowerCase();
       setSearch(trimmed);
       setPage(1);
-      if (trimmed && allProducts.length === 0) fetchAllProducts();
     }, 350);
   };
 
@@ -622,9 +506,9 @@ const InProgressListings = ({ embedded = false }) => {
       if (!res.ok) throw new Error(`Failed to fetch product details (${res.status})`);
       const editData = await res.json();
       const isDraft = editData?.status === "Draft";
-navigate(`/dashboard/listing/edit/${tableId}/product-info`, {
-  state: { editData, tableId, isEditMode: true, isDraftMode: isDraft, email: sellerEmail },
-});
+      navigate(`/dashboard/listing/edit/${tableId}/product-info`, {
+        state: { editData, tableId, isEditMode: true, isDraftMode: isDraft, email: sellerEmail, origin: "inprogress" },
+      });
     } catch (err) {
       console.error("[InProgressListings] Edit fetch error:", err);
       alert("Failed to load product for editing. Please try again.");
@@ -678,15 +562,13 @@ navigate(`/dashboard/listing/edit/${tableId}/product-info`, {
 
   // ── filtered list ────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
-    let list = search ? [...allProducts] : [...products];
+    let list = [...allProducts];
 
-    // FIX: Broadened status filter — show Draft, Under Review, Pending,
-    // Approved, Rejected, Update_Requested. Exclude nothing unless the
-    // user explicitly selects a status filter.
-    // NOTE: We do NOT apply VISIBLE_STATUSES as a hard filter here because
-    // the backend should already return only the seller's products. If a
-    // product has an unexpected status value, we still show it so the
-    // seller can see it, rather than silently hiding it.
+    // Only show draft and under review listings, exclude listings with generated productId
+    list = list.filter(p => {
+      const s = (p.status || "").toLowerCase();
+      return (s === "draft" || s === "under review") && !p.productId;
+    });
 
     if (search) {
       const q = search.trim().toLowerCase();
@@ -730,7 +612,13 @@ navigate(`/dashboard/listing/edit/${tableId}/product-info`, {
     console.groupEnd();
 
     return list;
-  }, [products, allProducts, search, statusFilter, priceFilter]);
+  }, [allProducts, search, statusFilter, priceFilter]);
+
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / LIMIT) || 1;
+  const paginatedProducts = useMemo(() => {
+    return filtered.slice((page - 1) * LIMIT, page * LIMIT);
+  }, [filtered, page]);
 
   const fromItem = total === 0 ? 0 : (page - 1) * LIMIT + 1;
   const toItem   = Math.min(page * LIMIT, total);
@@ -785,12 +673,8 @@ navigate(`/dashboard/listing/edit/${tableId}/product-info`, {
           <select className="ip-select" value={statusFilter}
             onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>
             <option value="all">All Status</option>
-            <option value="approved">Approved</option>
             <option value="under review">Under Review</option>
-            <option value="pending">Pending</option>
-            <option value="rejected">Rejected</option>
             <option value="draft">Draft</option>
-            <option value="update_requested">Update Requested</option>
           </select>
 
           <select className="ip-select" value={priceFilter}
@@ -843,7 +727,7 @@ navigate(`/dashboard/listing/edit/${tableId}/product-info`, {
                 <tbody>
                   {loading && Array.from({ length: LIMIT }).map((_, i) => <SkeletonRow key={i} />)}
 
-                  {!loading && filtered.map(product => {
+                  {!loading && paginatedProducts.map(product => {
                     const price         = Number(product.price) || 0;
                     const discount      = product.discount || {};
                     const finalPrice    = computeFinalPrice(price, discount);
@@ -867,9 +751,11 @@ navigate(`/dashboard/listing/edit/${tableId}/product-info`, {
                           >
                             {product.name || "-"}
                           </button>
-                          <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
-                            ID: {product.productId || product.Table_ID || "-"}
-                          </div>
+                          {product.productId && (
+                            <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
+                              ID: {product.productId}
+                            </div>
+                          )}
                         </td>
                         <td><span className="ip-price">₹{price.toFixed(2)}</span></td>
                         <td>
@@ -914,7 +800,7 @@ navigate(`/dashboard/listing/edit/${tableId}/product-info`, {
             <div className="ip-mobile-list">
               {loading && Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
 
-              {!loading && filtered.map(product => {
+              {!loading && paginatedProducts.map(product => {
                 const price      = Number(product.price) || 0;
                 const finalPrice = computeFinalPrice(price, product.discount || {});
 
@@ -933,9 +819,11 @@ navigate(`/dashboard/listing/edit/${tableId}/product-info`, {
                       >
                         {product.name || "-"}
                       </button>
-                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px", marginBottom: "4px" }}>
-                        ID: {product.productId || product.Table_ID || "-"}
-                      </div>
+                      {product.productId && (
+                        <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px", marginBottom: "4px" }}>
+                          ID: {product.productId}
+                        </div>
+                      )}
                       <span className="ip-mobile-card__price">₹{finalPrice.toFixed(2)}</span>
                     </div>
                     <div className="ip-mobile-card__right">
@@ -1108,7 +996,7 @@ navigate(`/dashboard/listing/edit/${tableId}/product-info`, {
                       <h3 className="ip-modal-name">{d.name || "—"}</h3>
                       {d.brand && <p className="ip-modal-brand">{d.brand}</p>}
                       <p className="ip-modal-brand" style={{ fontSize: "11px", color: "#64748b", marginTop: "2px", textTransform: "none" }}>
-                        Product ID: {d.productId || d.Table_ID || d._id || "Not Available"}
+                        Product ID: {d.productId || "Pending Approval"}
                       </p>
 
                       <CollapseSection title="Identification">
@@ -1116,7 +1004,7 @@ navigate(`/dashboard/listing/edit/${tableId}/product-info`, {
                           <div className="ip-modal-field">
                             <span className="ip-modal-label">Product ID</span>
                             <span className="ip-modal-value ip-modal-value--id">
-                              {d.Table_ID || d.productId || d.tableId || d._id || "Not Available"}
+                              {d.productId || "Pending Approval"}
                             </span>
                           </div>
                           <div className="ip-modal-field">
@@ -1419,6 +1307,7 @@ navigate(`/dashboard/listing/edit/${id}/product-info`, {
     isEditMode: true,
     isDraftMode: isDraft,
     email: sellerEmail,
+    origin: "inprogress",
   },
 });
                       }}

@@ -31,10 +31,39 @@ export const checkSeller = async (contact) => {
     throw new Error(data?.message || "Unexpected response from server.");
   }
 
+  const sellerObj = data.message?.seller || data.message || {};
+  const fullName = sellerObj.fullName || sellerObj.name || sellerObj.companyName || sellerObj.tradeName || "";
+
+  const sellerId =
+    sellerObj.sellerId ||
+    sellerObj.seller_id ||
+    sellerObj._id ||
+    sellerObj.id ||
+    sellerObj.uid ||
+    sellerObj.SellerID ||
+    sellerObj.Seller_ID ||
+    data?.message?.sellerId ||
+    data?.message?.seller_id ||
+    data?.sellerId ||
+    data?.seller_id ||
+    data?.SellerID ||
+    "";
+
+  if (sellerId && String(sellerId).trim().length > 2) {
+    const sid = String(sellerId).trim();
+    localStorage.setItem("sellerId", sid);
+    sessionStorage.setItem("sellerId", sid);
+    localStorage.setItem("__haatza_sellerId", sid);
+    sessionStorage.setItem("__haatza_sellerId", sid);
+    console.log("[sellerApi] ✅ checkSeller cached sellerId:", sid);
+  }
+
   return {
     userExists: data.message.userExists,
     contactType,
     email: data.message.email || "",
     phone: data.message.phone || "",
+    fullName: fullName || "",
+    sellerId: sellerId || "",
   };
 };

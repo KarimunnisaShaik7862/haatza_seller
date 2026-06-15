@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import OtpScreen from "../../components/auth/OtpScreen/OtpScreen";
 import { generateOtp, verifyOtp, resendOtp } from "../../api/OtpApi";
 import { checkOnboardStatus } from "../../api/OnboardStatusApi";
+import { saveUser } from "../../utils/userStore";
 const OTP_LENGTH    = 6;
 const TIMER_SECONDS = 60;
 
@@ -100,10 +101,27 @@ function OtpPage() {
   verifyResponse?.data?.email            ||
   null;
 
+const sellerObj =
+  verifyResponse?.message?.seller ||
+  verifyResponse?.seller          ||
+  verifyResponse?.message          ||
+  verifyResponse                   ||
+  {};
+
 const sellerIdFromOtp =
-  verifyResponse?.message?.seller?.sellerId ||
-  verifyResponse?.seller?.sellerId          ||
-  verifyResponse?.sellerId                  ||
+  sellerObj.sellerId ||
+  sellerObj.seller_id ||
+  sellerObj._id ||
+  sellerObj.id ||
+  sellerObj.uid ||
+  sellerObj.SellerID ||
+  sellerObj.Seller_ID ||
+  verifyResponse?.message?.sellerId ||
+  verifyResponse?.message?.seller_id ||
+  verifyResponse?.sellerId ||
+  verifyResponse?.seller_id ||
+  verifyResponse?.SellerID ||
+  routeState.sellerId ||
   "";
 
 const sellerPinCodeFromOtp =
@@ -160,6 +178,33 @@ if (sellerPinCodeFromOtp && /^\d{6}$/.test(String(sellerPinCodeFromOtp).trim()))
         sessionStorage.setItem("pendingEmail", emailToUse);
         localStorage.setItem("userEmail",      emailToUse);
         console.log("[OtpPage] ✅ Email saved to storage:", emailToUse);
+
+        // ── Extract and save seller name from verify OTP response ─────────────
+        const nameFromResponse =
+          verifyResponse?.message?.seller?.fullName ||
+          verifyResponse?.message?.seller?.name ||
+          verifyResponse?.message?.seller?.companyName ||
+          verifyResponse?.message?.seller?.tradeName ||
+          verifyResponse?.seller?.fullName ||
+          verifyResponse?.seller?.name ||
+          verifyResponse?.seller?.companyName ||
+          verifyResponse?.seller?.tradeName ||
+          verifyResponse?.fullName ||
+          verifyResponse?.name ||
+          verifyResponse?.companyName ||
+          verifyResponse?.tradeName ||
+          "";
+
+        if (nameFromResponse) {
+          localStorage.setItem("sellerName", nameFromResponse);
+          sessionStorage.setItem("sellerName", nameFromResponse);
+          saveUser({
+            name: nameFromResponse,
+            email: emailToUse,
+            phone: phone || "",
+          });
+          console.log("[OtpPage] ✅ sellerName and user saved to storage:", nameFromResponse);
+        }
 
 try {
   console.log("[OtpPage] Checking onboard status for:", emailToUse);

@@ -15,6 +15,9 @@
   --toggle-size:        36px;
   --toggle-top: calc(var(--navbar-height) + 20px);
   --slide-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Change these two lines in your :root block */
+--sidebar-width: 380px;   /* was 320px */
+--navbar-height: 82px;    /* was 70px  */
 }
 
 /* All sidebar-specific vars scoped here — won't bleed into Onboarding */
@@ -217,6 +220,20 @@ body {
   box-shadow: 0 0 12px var(--brand-glow);
   border-color: rgba(255, 255, 255, 0.38);
   transform: scale(1.08);
+}
+
+.profile__arrow {
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  margin-left: 8px;
+}
+
+.sidebar__profile:hover .profile__arrow {
+  color: var(--text-primary);
+  transform: translateX(3px);
 }
 
 .sidebar--mini .sidebar__profile {

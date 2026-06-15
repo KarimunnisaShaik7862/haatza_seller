@@ -750,7 +750,7 @@ const prefillCOD = (val) => {
 const ProductInfo = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { category, subcategory, isEditMode, isDuplicateMode, editData, tableId } = location.state || {};
+  const { category, subcategory, isEditMode, isDuplicateMode, editData, tableId, origin, email } = location.state || {};
   
   // uses top-level resolveWixImage
 
@@ -1141,11 +1141,27 @@ const ProductInfo = () => {
   };
 
   const handleBack = () => {
-    if (isEditMode && !isDuplicateMode) {
-      navigate(-1);
-    } else {
-      navigate("/dashboard/listing/select-category");
-    }
+    navigate("/dashboard/listing/select-category", {
+      state: {
+        category,
+        subcategory,
+        isEditMode,
+        isDuplicateMode,
+        editData,
+        tableId,
+        origin,
+        formData,
+        images,
+        specifications: location.state?.specifications || null,
+        colourImages: location.state?.colourImages || null,
+        confirmedColors: location.state?.confirmedColors || null,
+        variantPrices: location.state?.variantPrices || null,
+        promotionImage: location.state?.promotionImage || null,
+        keywords: location.state?.keywords || null,
+        discountType,
+        email: email || location.state?.email,
+      },
+    });
   };
 
   const validate = () => {
@@ -1229,6 +1245,8 @@ const ProductInfo = () => {
           isDuplicateMode,
           editData,
           tableId: isDuplicateMode ? null : tableId,
+          origin,
+          email: email || location.state?.email,
           specifications: location.state?.specifications || null, // Preserve other specifications across steps
           colourImages: location.state?.colourImages || null,
           confirmedColors: location.state?.confirmedColors || null,

@@ -269,7 +269,7 @@ export const fetchCategories = async () => {
 };
 
 /* ── fetchSubcategoriesFirstPage ──
-   Fetches page 1 (up to 50 items) and returns items + hasMore flag.
+   Fetches page 1 (up to 50 items) and returns items + hasMore flag + total if available.
 */
 export const fetchSubcategoriesFirstPage = async (categoryId) => {
   const cleanId = String(categoryId ?? "").trim();
@@ -288,18 +288,23 @@ export const fetchSubcategoriesFirstPage = async (categoryId) => {
     const normalised = raw.map(normaliseSubcategory);
     console.log(`[fetchSubcategoriesFirstPage] → ${normalised.length} subcategories`);
 
+    const body = data?.message?.body ?? data?.body ?? data ?? {};
+    const pagination = body.pagination ?? {};
+    const total = pagination.total ?? body.total ?? data.total ?? null;
+
     return {
       items:   normalised,
       hasMore: normalised.length === 50,
+      total:   typeof total === "number" ? total : null,
     };
   } catch (err) {
     console.error("[fetchSubcategoriesFirstPage]", err);
-    return { items: [], hasMore: false };
+    return { items: [], hasMore: false, total: null };
   }
 };
 
 /* ── fetchSubcategoriesPaged ──
-   Fetches any page. Returns { items, hasMore }.
+   Fetches any page. Returns { items, hasMore, total }.
    hasMore = true  → backend returned a full page of 50, so a next page likely exists.
    hasMore = false → backend returned fewer than 50, meaning this is the last page.
 */
@@ -316,13 +321,18 @@ export const fetchSubcategoriesPaged = async (categoryId, page = 1, limit = 50) 
     const normalised = raw.map(normaliseSubcategory);
     console.log(`[fetchSubcategoriesPaged] page=${page} → ${normalised.length} items`);
 
+    const body = data?.message?.body ?? data?.body ?? data ?? {};
+    const pagination = body.pagination ?? {};
+    const total = pagination.total ?? body.total ?? data.total ?? null;
+
     return {
       items:   normalised,
       hasMore: normalised.length === limit,
+      total:   typeof total === "number" ? total : null,
     };
   } catch (err) {
     console.error("[fetchSubcategoriesPaged]", err);
-    return { items: [], hasMore: false };
+    return { items: [], hasMore: false, total: null };
   }
 };
 

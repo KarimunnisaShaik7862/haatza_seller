@@ -64,8 +64,6 @@
     radial-gradient(ellipse 72% 52% at 72% 8%,  rgba(41,98,255,0.10) 0%, transparent 66%),
     radial-gradient(ellipse 42% 42% at 10% 82%, rgba(124,58,237,0.06) 0%, transparent 62%);
   min-height: 100vh;
-  height: 100vh;
-  overflow-y: auto;
   padding: 32px 44px 80px;
   color: var(--sc-text);
   box-sizing: border-box;

@@ -12,11 +12,15 @@ export const generateOtp = async (phone) => {
     body: JSON.stringify({ phone }),
   });
 
-  if (!res.ok) {
-    throw new Error("Failed to generate OTP. Please try again.");
-  }
+  const text = await res.text();
+  console.log(`[generateOtp] HTTP ${res.status} Response text:`, text);
 
-  const data = await res.json();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Failed to generate OTP (HTTP ${res.status}). Please try again.`);
+  }
 
   if (data?.status !== "success") {
     throw new Error(data?.message || "Could not send OTP. Please try again.");
@@ -35,17 +39,19 @@ export const verifyOtp = async (phone, otp) => {
     body: JSON.stringify({ phone, otp }),
   });
 
-  if (!res.ok) {
-    throw new Error("Verification failed. Please try again.");
-  }
+  const text = await res.text();
+  console.log(`[verifyOtp] HTTP ${res.status} Response text:`, text);
 
-  const data = await res.json();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Verification failed (HTTP ${res.status}). Please try again.`);
+  }
 
   if (data?.status !== "success") {
     throw new Error(data?.message || "Invalid OTP. Please try again.");
   }
-
-  console.log("verifyOtp raw response:", JSON.stringify(data)); // ← add this temporarily
 
   return data; // ← ensure full object is returned, not just status
 };
@@ -61,11 +67,15 @@ export const resendOtp = async (phone) => {
     body: JSON.stringify({ phone }),
   });
 
-  if (!res.ok) {
-    throw new Error("Failed to resend OTP. Please try again.");
-  }
+  const text = await res.text();
+  console.log(`[resendOtp] HTTP ${res.status} Response text:`, text);
 
-  const data = await res.json();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Failed to resend OTP (HTTP ${res.status}). Please try again.`);
+  }
 
   if (data?.status !== "success") {
     throw new Error(data?.message || "Could not resend OTP. Please try again.");

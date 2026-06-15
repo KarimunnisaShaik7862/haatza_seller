@@ -1246,7 +1246,7 @@ const ColorPickerModal = ({ open, availableColors, tempColors, onToggle, onAdd, 
           {!showPicker ? (
             <>
               <button className="sp-cmodal-add" onClick={() => setShowPicker(true)}>
-                <PlusIcon size={12} /> Add Colour
+                <PlusIcon size={12} /> Add Color
               </button>
               <div style={{ display: "flex", gap: 16 }}>
                 {/* CHANGED: Done always enabled — no minimum selection required */}
@@ -1839,7 +1839,7 @@ const ColourAndEditSection = ({
         <div style={{ marginTop: 16 }}>
           {/* Header row: Colour label + Connect Image button */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <label className="sp-label" style={{ margin: 0 }}>Colour</label>
+            <label className="sp-label" style={{ margin: 0 }}>Color</label>
             {confirmedColors.length > 0 && (
               <div style={{ position: "relative" }}>
                 <button
@@ -1893,7 +1893,7 @@ const ColourAndEditSection = ({
                   key={c.name}
                   className="sp-color-chip sp-color-chip--active"
                   onClick={handleOpenColorPicker}
-                  title="Click to edit colours"
+                  title="Click to edit colors"
                   style={{ position: "relative" }}
                 >
                   <span className="sp-color-dot" style={{ background: c.hex }}/>
@@ -1914,14 +1914,14 @@ const ColourAndEditSection = ({
               style={{ borderStyle: "dashed" }}
               onClick={handleOpenColorPicker}
             >
-              {confirmedColors.length === 0 ? "+ Select colours" : "Edit colours"}
+              {confirmedColors.length === 0 ? "+ Select colors" : "Edit colors"}
             </button>
           </div>
 
           {/* Selected colours summary */}
           {confirmedColors.length > 0 && (
             <div className="sp-color-summary">
-              <span className="sp-color-summary-label">Selected Colours:</span>
+              <span className="sp-color-summary-label">Selected Colors:</span>
               <span>{confirmedColors.map(c => c.name).join(", ")}</span>
             </div>
           )}
@@ -2065,7 +2065,7 @@ const resolveSubcategoryId = (subcategory, category) => {
 const SpecificationPage = () => {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { category, subcategory, formData, images, specifications, isEditMode, isDuplicateMode, editData, tableId } = location.state || {};
+  const { category, subcategory, formData, images, specifications, isEditMode, isDuplicateMode, editData, tableId, origin, email } = location.state || {};
   const basePrice = formData?.price || "";
 
   const [fields,          setFields]          = useState([]);
@@ -2348,7 +2348,7 @@ optsArray.forEach(opt => {
       // confirmedColors is the source of truth for color selection
       if (confirmedColors.length === 1) {
         // Use a special key to show error near color section
-        errors["__colorSelection__"] = "Please select at least 2 colours, or select none.";
+        errors["__colorSelection__"] = "Please select at least 2 colors, or select none.";
       } else if (confirmedColors.length > 1) {
         const missingColors = confirmedColors
           .filter(c => {
@@ -2536,6 +2536,8 @@ console.groupEnd();
           isDuplicateMode,
           editData,
           tableId: isDuplicateMode ? null : tableId,
+          origin,
+          email,
           colourImages,
           confirmedColors,
           // CRITICAL: pass these so ReviewSubmitPage can display options/variants/specs
@@ -2565,6 +2567,8 @@ console.groupEnd();
           isDuplicateMode,
           editData,
           tableId: isDuplicateMode ? null : tableId,
+          origin,
+          email,
           specifications: values,
           colourImages,
           confirmedColors,

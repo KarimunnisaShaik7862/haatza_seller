@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./SelectCategory.css";
 
 import {
@@ -38,18 +38,21 @@ const PAGE_SIZE = 50;
 const Pagination = ({ currentPage, totalPages, onPageChange, loading }) => {
   if (totalPages <= 1) return null;
 
+  const isInfinite = totalPages === Infinity;
+  const effectiveTotalPages = isInfinite ? currentPage + 1 : totalPages;
+
   const buildPages = () => {
-    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (effectiveTotalPages <= 7) return Array.from({ length: effectiveTotalPages }, (_, i) => i + 1);
     const pages = [];
     pages.push(1);
     if (currentPage > 3)              pages.push("...");
     for (
       let i = Math.max(2, currentPage - 1);
-      i <= Math.min(totalPages - 1, currentPage + 1);
+      i <= Math.min(effectiveTotalPages - 1, currentPage + 1);
       i++
     ) { pages.push(i); }
-    if (currentPage < totalPages - 2) pages.push("...");
-    pages.push(totalPages);
+    if (!isInfinite && currentPage < effectiveTotalPages - 2) pages.push("...");
+    if (!isInfinite) pages.push(effectiveTotalPages);
     return pages;
   };
 
@@ -399,20 +402,41 @@ const StepSubcategory = ({
 ═══════════════════════════════════════════════════════ */
 const SelectCategory = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const {
+    category: stateCategory,
+    subcategory: stateSubcategory,
+    isEditMode,
+    isDuplicateMode,
+    editData,
+    tableId,
+    origin,
+    email,
+    formData,
+    images,
+    specifications,
+    colourImages,
+    confirmedColors,
+    variantPrices,
+    promotionImage,
+    keywords,
+    discountType,
+    ...restState
+  } = location.state || {};
 
   /* ── step ── */
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(stateCategory && stateSubcategory ? 1 : 0);
 
   /* ── category state ── */
   const [categories,          setCategories]          = useState([]);
   const [catLoading,          setCatLoading]          = useState(true);
-  const [selectedCat,         setSelectedCat]         = useState(null);
+  const [selectedCat,         setSelectedCat]         = useState(stateCategory || null);
   const [displayedCategories, setDisplayedCategories] = useState([]);
 
   /* ── subcategory state ── */
   const [subcategories,          setSubcategories]          = useState([]);
   const [subLoading,             setSubLoading]             = useState(false);
-  const [selectedSub,            setSelectedSub]            = useState(null);
+  const [selectedSub,            setSelectedSub]            = useState(stateSubcategory || null);
   const [displayedSubcategories, setDisplayedSubcategories] = useState([]);
 
   /* ── pagination state ── */
@@ -451,6 +475,29 @@ const SelectCategory = () => {
       }
     })();
   }, []);
+
+  /* Load subcategories on mount if category is pre-selected */
+  useEffect(() => {
+    if (stateCategory && stateCategory.CategoryID) {
+      (async () => {
+        try {
+          setSubLoading(true);
+          const { items, hasMore, total } = await fetchSubcategoriesFirstPage(stateCategory.CategoryID);
+          setSubcategories(items);
+          setDisplayedSubcategories(items);
+          if (typeof total === "number" && total > 0) {
+            setTotalPages(Math.ceil(total / PAGE_SIZE));
+          } else {
+            setTotalPages(hasMore ? Infinity : 1);
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setSubLoading(false);
+        }
+      })();
+    }
+  }, [stateCategory]);
 
   /* ══════════════════════════════════════
      CATEGORY PAGE SEARCH
@@ -568,11 +615,15 @@ const SelectCategory = () => {
 
     try {
       setSubLoading(true);
-      const { items, hasMore } = await fetchSubcategoriesFirstPage(cat.CategoryID);
+      const { items, hasMore, total } = await fetchSubcategoriesFirstPage(cat.CategoryID);
 
       setSubcategories(items);
       setDisplayedSubcategories(items);
-      setTotalPages(hasMore ? Infinity : 1);
+      if (typeof total === "number" && total > 0) {
+        setTotalPages(Math.ceil(total / PAGE_SIZE));
+      } else {
+        setTotalPages(hasMore ? Infinity : 1);
+      }
       setStep(1);
     } catch (e) {
       console.error(e);
@@ -592,7 +643,7 @@ const SelectCategory = () => {
 
     try {
       setPageLoading(true);
-      const { items, hasMore } = await fetchSubcategoriesPaged(
+      const { items, hasMore, total } = await fetchSubcategoriesPaged(
         selectedCat.CategoryID,
         newPage,
         PAGE_SIZE
@@ -601,9 +652,13 @@ const SelectCategory = () => {
       setSubcategories(items);
       setDisplayedSubcategories(items);
 
-      setTotalPages((prev) =>
-        hasMore ? Math.max(prev === Infinity ? newPage + 1 : prev, newPage + 1) : newPage
-      );
+      if (typeof total === "number" && total > 0) {
+        setTotalPages(Math.ceil(total / PAGE_SIZE));
+      } else {
+        setTotalPages((prev) =>
+          hasMore ? Math.max(prev === Infinity ? newPage + 1 : prev, newPage + 1) : newPage
+        );
+      }
 
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
@@ -628,10 +683,32 @@ const SelectCategory = () => {
             name: sub.categoryName,
           }
         : selectedCat;
-    navigate("/dashboard/listing/select-category/product-info", {
-      state: { category: trueCategory, subcategory: sub },
+    const targetPath = isEditMode
+      ? `/dashboard/listing/edit/${tableId}/product-info`
+      : "/dashboard/listing/select-category/product-info";
+    navigate(targetPath, {
+      state: {
+        category: trueCategory,
+        subcategory: sub,
+        isEditMode,
+        isDuplicateMode,
+        editData,
+        tableId,
+        origin,
+        email,
+        formData,
+        images,
+        specifications,
+        colourImages,
+        confirmedColors,
+        variantPrices,
+        promotionImage,
+        keywords,
+        discountType,
+        ...restState
+      },
     });
-  }, [navigate, selectedCat]);
+  }, [navigate, selectedCat, isEditMode, isDuplicateMode, editData, tableId, origin, email, formData, images, specifications, colourImages, confirmedColors, variantPrices, promotionImage, keywords, discountType, restState]);
 
   /* ══════════════════════════════════════
      INLINE SUBCATEGORY SEARCH (category page)
@@ -642,10 +719,32 @@ const SelectCategory = () => {
       sub.categoryName
         ? { CategoryID: sub.categoryId || "", name: sub.categoryName }
         : null;
-    navigate("/dashboard/listing/select-category/product-info", {
-  state: { category: trueCategory, subcategory: sub },
-});
-  }, [navigate]);
+    const targetPath = isEditMode
+      ? `/dashboard/listing/edit/${tableId}/product-info`
+      : "/dashboard/listing/select-category/product-info";
+    navigate(targetPath, {
+      state: {
+        category: trueCategory,
+        subcategory: sub,
+        isEditMode,
+        isDuplicateMode,
+        editData,
+        tableId,
+        origin,
+        email,
+        formData,
+        images,
+        specifications,
+        colourImages,
+        confirmedColors,
+        variantPrices,
+        promotionImage,
+        keywords,
+        discountType,
+        ...restState
+      },
+    });
+  }, [navigate, isEditMode, isDuplicateMode, editData, tableId, origin, email, formData, images, specifications, colourImages, confirmedColors, variantPrices, promotionImage, keywords, discountType, restState]);
 
 
 
@@ -679,7 +778,7 @@ const SelectCategory = () => {
     <div className="sc-root sc-visible">
       <BackButton
         label="Back to Seller Dashboard"
-        onClick={() => navigate("/dashboard/listing")}
+        onClick={() => navigate("/dashboard/listing", { state: { tab: origin } })}
       />
 
       <PageHeader

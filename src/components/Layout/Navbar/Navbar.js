@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./Navbar.css";
 import haatzaSellerLogo from "../../../assets/Images/haatzaSellerlogo.png";
 import {
@@ -22,12 +23,18 @@ const getGreeting = () => {
 };
 
 const HaatzaNavbar = ({ seller = {} }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [dropdownOpen, setDropdownOpen]         = useState(false);
   const [mobileIconsOpen, setMobileIconsOpen]   = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchFocused, setSearchFocused]       = useState(false);
   const [searchValue, setSearchValue]           = useState("");
   const [scrolled, setScrolled]                 = useState(false);
+
+  // Dropdown states
+  const [remindersDropdownOpen, setRemindersDropdownOpen] = useState(false);
 
   const dropdownRef   = useRef(null);
   const mobileIconRef = useRef(null);
@@ -39,6 +46,24 @@ const HaatzaNavbar = ({ seller = {} }) => {
   const sellerRole    = seller?.role          || "";
   const sellerInitial = seller?.avatarInitial || (sellerName ? sellerName.charAt(0).toUpperCase() : "");
   const sellerLogoUrl = seller?.logoUrl       || null;
+
+  const toggleRemindersDropdown = () => {
+    const nextState = !remindersDropdownOpen;
+    setRemindersDropdownOpen(nextState);
+    setDropdownOpen(false);
+  };
+
+  const RemindersDropdownMenu = () => {
+    return React.createElement(
+      "div", { className: "navbar-dropdown-panel reminders-dropdown" },
+      React.createElement("div", { className: "dropdown-panel-header" },
+        React.createElement("h3", null, "Reminders")
+      ),
+      React.createElement("div", { className: "dropdown-panel-body" },
+        React.createElement("div", { className: "panel-empty" }, "No reminders available.")
+      )
+    );
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -63,6 +88,9 @@ const HaatzaNavbar = ({ seller = {} }) => {
         !e.target.closest(".mobile-search-icon-btn")
       ) {
         setMobileSearchOpen(false);
+      }
+      if (!e.target.closest(".reminders-dropdown-container")) {
+        setRemindersDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -209,17 +237,48 @@ const HaatzaNavbar = ({ seller = {} }) => {
           /* Desktop icon group (Bell, Wallet, Messages) — hidden on tablet/mobile */
           React.createElement(
             "div", { className: "icon-group" },
+
+            /* Notifications Icon */
             React.createElement(
-              "button", { className: "icon-btn", title: "Notifications" },
-              React.createElement(Bell, { size: 20 })
+              "div", { className: "notif-icon-container" },
+              React.createElement(
+                "button",
+                {
+                  className: `icon-btn ${location.pathname === "/notifications" ? "active" : ""}`,
+                  title: "Notifications",
+                  onClick: () => navigate("/notifications"),
+                },
+                React.createElement(Bell, { size: 20 })
+              )
             ),
+
+            /* Wallet Icon */
             React.createElement(
-              "button", { className: "icon-btn", title: "Wallet" },
-              React.createElement(Wallet, { size: 20 })
+              "div", { className: "wallet-icon-container" },
+              React.createElement(
+                "button",
+                {
+                  className: `icon-btn ${location.pathname === "/wallet" ? "active" : ""}`,
+                  title: "Wallet",
+                  onClick: () => navigate("/wallet"),
+                },
+                React.createElement(Wallet, { size: 20 })
+              )
             ),
+
+            /* Messages Icon + Reminders Panel */
             React.createElement(
-              "button", { className: "icon-btn", title: "Messages" },
-              React.createElement(MessageSquare, { size: 20 })
+              "div", { className: "reminders-dropdown-container" },
+              React.createElement(
+                "button",
+                {
+                  className: `icon-btn ${remindersDropdownOpen ? "active" : ""}`,
+                  title: "Messages",
+                  onClick: toggleRemindersDropdown,
+                },
+                React.createElement(MessageSquare, { size: 20 })
+              ),
+              remindersDropdownOpen && RemindersDropdownMenu()
             )
           ),
 
@@ -337,7 +396,12 @@ const HaatzaNavbar = ({ seller = {} }) => {
         "div", { className: "mobile-icon-row" },
 
         React.createElement(
-          "button", { className: "mobile-drawer-icon-btn", title: "Notifications" },
+          "button",
+          {
+            className: "mobile-drawer-icon-btn",
+            title: "Notifications",
+            onClick: () => { setMobileIconsOpen(false); navigate("/notifications"); },
+          },
           React.createElement(
             "div", { className: "mobile-drawer-icon" },
             React.createElement(Bell, { size: 22 })
@@ -346,7 +410,12 @@ const HaatzaNavbar = ({ seller = {} }) => {
         ),
 
         React.createElement(
-          "button", { className: "mobile-drawer-icon-btn", title: "Wallet" },
+          "button",
+          {
+            className: "mobile-drawer-icon-btn",
+            title: "Wallet",
+            onClick: () => { setMobileIconsOpen(false); navigate("/wallet"); },
+          },
           React.createElement(
             "div", { className: "mobile-drawer-icon" },
             React.createElement(Wallet, { size: 22 })
@@ -355,7 +424,12 @@ const HaatzaNavbar = ({ seller = {} }) => {
         ),
 
         React.createElement(
-          "button", { className: "mobile-drawer-icon-btn", title: "Messages" },
+          "button",
+          {
+            className: "mobile-drawer-icon-btn",
+            title: "Messages",
+            onClick: () => { setMobileIconsOpen(false); navigate("/notifications"); },
+          },
           React.createElement(
             "div", { className: "mobile-drawer-icon" },
             React.createElement(MessageSquare, { size: 22 })

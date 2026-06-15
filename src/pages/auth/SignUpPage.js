@@ -54,6 +54,12 @@ console.log("[SignUpPage] Seller ID:", result.sellerId || "Not found in response
     sessionStorage.setItem('userEmail', form.email.toLowerCase().trim());
     localStorage.setItem('userEmail', form.email.toLowerCase().trim());
 
+    // Cache seller name and call saveUser
+    saveUser({ name: form.fullName.trim(), email: form.email.toLowerCase().trim(), phone: form.phone.trim() });
+    localStorage.setItem("sellerName", form.fullName.trim());
+    sessionStorage.setItem("sellerName", form.fullName.trim());
+    console.log("[SignUpPage] ✅ Cached sellerName and user info from signup:", form.fullName.trim());
+
     // sellerId is returned by registerUser if backend includes it
     if (result.sellerId) {
 
