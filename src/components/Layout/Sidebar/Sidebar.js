@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import ReactDOM from "react-dom";
 import { sellerService } from "../../../services/sellerService";
 import { getSellerId } from "../../../utils/sellerSession";
+import { useAuth } from "../../../context/AuthContext";
 import "./Sidebar.css";
 
 const KEY_TO_ROUTE = {
@@ -328,13 +329,13 @@ function NavItem({ item, active, onClick, isCollapsed, onTooltipShow, onTooltipH
 /* ─────────────────────────────────────────────────────────────
    SELLER PROFILE
    ───────────────────────────────────────────────────────────── */
-function SellerProfile({ sellerName = "", sellerEmail = "", onProfileClick, isCollapsed }) {
+function SellerProfile({ sellerName = "", sellerEmail = "", sellerPhone = "", sellerId = "", onProfileClick, isCollapsed }) {
   const initials = sellerName
     .split(" ")
     .map(n => n[0])
     .join("")
     .toUpperCase()
-    .slice(0, 2) || "??";
+    .slice(0, 2) || "";
 
   return React.createElement(
     "div",
@@ -350,7 +351,7 @@ function SellerProfile({ sellerName = "", sellerEmail = "", onProfileClick, isCo
     ),
     !isCollapsed && React.createElement(
       "div", { className: "profile__info" },
-      React.createElement("p", { className: "profile__name" }, sellerName || "Loading..."),
+      React.createElement("p", { className: "profile__name" }, sellerName || ""),
       React.createElement("div", { className: "profile__email-container" },
         React.createElement("p", { className: "profile__email" }, sellerEmail || "seller@haatza.com"),
         React.createElement("button", {
@@ -364,6 +365,36 @@ function SellerProfile({ sellerName = "", sellerEmail = "", onProfileClick, isCo
             React.createElement("line", { x1: "10", y1: "14", x2: "21", y2: "3" })
           )
         )
+      ),
+      sellerPhone && React.createElement(
+        "p",
+        {
+          className: "profile__phone",
+          style: {
+            fontSize: "12.5px",
+            color: "rgba(255, 255, 255, 0.5)",
+            marginTop: "3px",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          }
+        },
+        sellerPhone
+      ),
+      sellerId && React.createElement(
+        "p",
+        {
+          className: "profile__id",
+          style: {
+            fontSize: "12.5px",
+            color: "rgba(255, 255, 255, 0.5)",
+            marginTop: "3px",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          }
+        },
+        sellerId
       )
     )
   );
@@ -375,11 +406,14 @@ function SellerProfile({ sellerName = "", sellerEmail = "", onProfileClick, isCo
 function Sidebar({
   sellerName     = "",
   sellerEmail    = "",
+  sellerPhone    = "",
+  sellerId       = "",
   onProfileClick = () => {},
   onCollapseChange,
 }) {
   const navigate  = useNavigate();
   const location  = useLocation();
+  const { logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(
     () => typeof window !== "undefined" && window.innerWidth <= 768
   );
@@ -395,24 +429,28 @@ function Sidebar({
       return "listing";
     }
 
+    if (path.includes("/product-insight") || path.includes("/productinsight")) {
+      return "productinsight";
+    }
+
     return ROUTE_TO_KEY[path] ?? "dashboard";
   })();
 
   /* ── Dynamic badge counts ─────────────────────────────────── */
   const [menuSections, setMenuSections] = useState(NAV_SECTIONS);
-  const sellerId = getSellerId();
+  const activeSellerId = sellerId || getSellerId();
 
   useEffect(() => {
-    if (!sellerId) return;
+    if (!activeSellerId) return;
 
     const fetchCounts = async () => {
       try {
         const [ordersRes, ticketsRes, notifRes, walletRes, campaignRes] = await Promise.allSettled([
-          sellerService.getSellerNewOrders(sellerId),
-          sellerService.getTickets(sellerId),
-          sellerService.getNotifications(sellerId),
-          sellerService.checkWalletBalance(sellerId),
-          sellerService.getAdvertisementSummary(sellerId),
+          sellerService.getSellerNewOrders(activeSellerId),
+          sellerService.getTickets(activeSellerId),
+          sellerService.getNotifications(activeSellerId),
+          sellerService.checkWalletBalance(activeSellerId),
+          sellerService.getAdvertisementSummary(activeSellerId),
         ]);
 
         let ordersCount = 0;
@@ -472,7 +510,7 @@ function Sidebar({
     fetchCounts();
     const interval = setInterval(fetchCounts, 30000);
     return () => clearInterval(interval);
-  }, [sellerId]);
+  }, [activeSellerId]);
 
   /* ── Tooltip state ────────────────────────────────────────── */
   const [tooltip, setTooltip] = useState({ 
@@ -579,9 +617,14 @@ function Sidebar({
 
   const handleToggle       = useCallback(() => setIsCollapsed(prev => !prev), []);
   const handleItemClick    = useCallback((key) => {
+    if (key === "logout") {
+      logout();
+      navigate("/signin");
+      return;
+    }
     const route = KEY_TO_ROUTE[key];
     if (route) navigate(route);
-  }, [navigate]);
+  }, [navigate, logout]);
   const handleProfileClick = useCallback((e) => { 
     e.stopPropagation(); 
     onProfileClick(); 
@@ -606,7 +649,7 @@ function Sidebar({
   const content = React.createElement(
     React.Fragment, null,
 
-    React.createElement(SellerProfile, { sellerName, sellerEmail, onProfileClick: handleProfileClick, isCollapsed }),
+    React.createElement(SellerProfile, { sellerName, sellerEmail, sellerPhone, sellerId: activeSellerId, onProfileClick: handleProfileClick, isCollapsed }),
 
     React.createElement("div", { className: "sidebar__divider" }),
 

@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useMemo } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, XCircle, Truck, Info, CreditCard, User } from "lucide-react";
-import { fetchOrderDetails, updateOrdersstatus, getDeliveryAmount, expectedTat, createShipment } from "../../../api/OrdersPageApi";
-import { getCachedSellerPinCode, getCachedSellerId } from "../../../api/sellerProfileApi";
+import { useAuth } from "../../../context/AuthContext";
+import { fetchOrderDetails, updateOrdersstatus, getDeliveryAmount, expectedTat, createShipment, getCachedSellerPinCode, getCachedSellerId, cancelShipment } from "../../../services/sellerService";
 import "../theme.css";
 import "./OrderDetailsPage.css";
 
@@ -45,6 +45,12 @@ const renderExpectedDelivery = (est) => {
 const OrderDetailsPage = () => {
   const { tableId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromTab = location.state?.fromTab;
+
+  const handleBackToOrders = () => {
+    navigate("/dashboard/orders", { state: { fromTab } });
+  };
 
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +66,8 @@ const OrderDetailsPage = () => {
   const [trackerError, setTrackerError] = useState(false);
   const [resolvedSellerPin, setResolvedSellerPin] = useState("");
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
+
+  const [cancelling, setCancelling] = useState(false);
 
   const showToastMsg = (message, type = "success") => {
     setToast({ show: true, message, type });
@@ -88,20 +96,32 @@ const OrderDetailsPage = () => {
     return renderExpectedDelivery(details.estimatedDelivery);
   };
 
-  const sellerId = getCachedSellerId() || (() => {
+  const { user } = useAuth();
+  const sellerId = useMemo(() => {
+    const cached = getCachedSellerId();
+    if (cached) return cached;
+
     try {
-      const storedProfile = JSON.parse(sessionStorage.getItem("sellerProfile") || "{}");
+      const stored = JSON.parse(localStorage.getItem("haatzaSeller"));
       return (
-        storedProfile?.sellerId ||
-        storedProfile?.data?.sellerId ||
+        user?.sellerId ||
+        stored?.sellerId ||
+        stored?.data?.sellerId ||
         sessionStorage.getItem("__haatza_sellerId") ||
         localStorage.getItem("sellerId") ||
-        "HS1380"
+        sessionStorage.getItem("sellerId") ||
+        ""
       );
     } catch {
-      return sessionStorage.getItem("__haatza_sellerId") || localStorage.getItem("sellerId") || "HS1380";
+      return (
+        user?.sellerId ||
+        sessionStorage.getItem("__haatza_sellerId") ||
+        localStorage.getItem("sellerId") ||
+        sessionStorage.getItem("sellerId") ||
+        ""
+      );
     }
-  })();
+  }, [user]);
 
   const sellerPinCode = getCachedSellerPinCode() || (() => {
     try {
@@ -299,6 +319,65 @@ const OrderDetailsPage = () => {
   };
 
   const handleCreateShipment = async () => {
+    const dPin = String(details?.deliverpincode || details?.deliveryPincode || details?.deliveryPinCode || details?.toPincode || details?.pincode || "").trim();
+    const weightVal = parseFloat(details?.shippingWeight || details?.cgm || details?.weight) || 0;
+    const pinToUse = resolvedSellerPin || sellerPinCode || "";
+    const customerPhone = String(details?.customerPhone || details?.phone || "").trim();
+    const customerAddress = String(details?.customerAddress || details?.address || "").trim();
+    const customerName = String(details?.customerName || details?.name || "").trim();
+    const currentStatus = details?.status || orderStatus;
+
+    // Console logs before createShipment
+    console.log("Seller ID:", sellerId);
+    console.log("Order Details:", details);
+    
+    const payloadForLog = {
+      orderId: Number(details?.orderId),
+      sellerId,
+      OrderId: Number(details?.orderId),
+      SellerId: sellerId,
+      trackingId: "",
+      tracking_id: "",
+      waybill: "",
+      awb: "",
+      AWB: ""
+    };
+    console.log("Shipment Payload:", payloadForLog);
+
+    // Validation checks
+    if (!sellerId) {
+      showToastMsg("Error: Invalid or missing Seller ID. Please log in again.", "error");
+      return;
+    }
+    if (!details?.orderId) {
+      showToastMsg("Error: Missing Order ID.", "error");
+      return;
+    }
+    if (!customerPhone) {
+      showToastMsg("Error: Missing Customer Phone Number.", "error");
+      return;
+    }
+    if (!customerAddress) {
+      showToastMsg("Error: Missing Customer Delivery Address.", "error");
+      return;
+    }
+    if (!dPin) {
+      showToastMsg("Error: Missing Customer Delivery Pincode.", "error");
+      return;
+    }
+    if (!pinToUse) {
+      showToastMsg("Error: Missing Seller Pickup Pincode.", "error");
+      return;
+    }
+    if (weightVal <= 0) {
+      showToastMsg("Error: Shipping weight must be greater than 0.", "error");
+      return;
+    }
+    if (currentStatus !== "Order Confirmed") {
+      showToastMsg(`Error: Shipment can only be created for 'Order Confirmed' status (current: ${currentStatus}).`, "error");
+      return;
+    }
+
     setCreatingShipment(true);
     console.log("[handleCreateShipment] Call createShipment for Order ID:", details?.orderId);
     
@@ -386,7 +465,7 @@ const OrderDetailsPage = () => {
       
       {/* ─── DESKTOP HEADER ──────────────────────────────────────────────── */}
       <div className="desktop-only details-header-desktop">
-        <button className="back-btn" onClick={() => navigate(-1)}>
+        <button className="back-btn" onClick={handleBackToOrders}>
           <ArrowLeft size={18} />
           Back to Orders
         </button>
@@ -401,7 +480,7 @@ const OrderDetailsPage = () => {
 
       {/* ─── MOBILE HEADER ───────────────────────────────────────────────── */}
       <div className="mobile-only details-header-mobile">
-        <button className="mobile-back-btn" onClick={() => navigate(-1)}>
+        <button className="mobile-back-btn" onClick={handleBackToOrders}>
           <ArrowLeft size={24} />
         </button>
         <h2>Ordered Items</h2>
@@ -469,9 +548,8 @@ const OrderDetailsPage = () => {
           {isPlaced && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
               <div className="actions-buttons-wrap">
-                <button className="btn-primary" onClick={() => setShowAcceptModal(true)}>Accept Order</button>
-                <button className="btn-secondary btn-danger-outline" onClick={handleCancelOrder}>Cancel Order</button>
-                <button className="btn-primary" onClick={handleTrackOrderClick}>Track Shipment</button>
+                <button className="btn-primary" onClick={() => setShowAcceptModal(true)} disabled={cancelling}>Accept Order</button>
+                <button className="btn-secondary btn-danger-outline" onClick={() => navigate(`/dashboard/orders/cancel/${tableId}`, { state: { fromTab } })} disabled={cancelling}>Cancel Order</button>
               </div>
               {!trackingId.trim() && trackerError && (
                 <p className="tracker-error-msg" style={{ margin: 0 }}>Tracker is not available for this product</p>
@@ -484,7 +562,7 @@ const OrderDetailsPage = () => {
                 <button 
                   className="btn-primary" 
                   onClick={handleOpenShipmentModal}
-                  disabled={loadingShippingData}
+                  disabled={loadingShippingData || cancelling}
                 >
                   {loadingShippingData ? (
                     <span className="spinner-btn-wrap">
@@ -492,8 +570,7 @@ const OrderDetailsPage = () => {
                     </span>
                   ) : "Create Shipment"}
                 </button>
-                <button className="btn-secondary btn-danger-outline" onClick={handleCancelOrder} disabled={loadingShippingData}>Cancel</button>
-                <button className="btn-primary" onClick={handleTrackOrderClick} disabled={loadingShippingData}>Track Shipment</button>
+                <button className="btn-secondary btn-danger-outline" onClick={() => navigate(`/dashboard/orders/cancel/${tableId}`, { state: { fromTab } })} disabled={loadingShippingData || cancelling}>Cancel Order</button>
               </div>
               {!trackingId.trim() && trackerError && (
                 <p className="tracker-error-msg" style={{ margin: 0 }}>Tracker is not available for this product</p>
@@ -507,9 +584,6 @@ const OrderDetailsPage = () => {
                   <CheckCircle2 size={20} />
                   <span>Shipment Status: <strong>Shipped</strong> {trackingId ? `| Tracking ID: ${trackingId}` : ""}</span>
                 </div>
-                <button className="btn-primary" onClick={handleTrackOrderClick}>
-                  Track Shipment
-                </button>
                 {trackingId && (
                   <button 
                     className="btn-secondary" 
@@ -542,7 +616,7 @@ const OrderDetailsPage = () => {
                   <span>Order Cancelled</span>
                 </div>
                 <button className="btn-primary" onClick={handleTrackOrderClick}>
-                  Track Shipment
+                  Track Order
                 </button>
               </div>
               {!trackingId.trim() && trackerError && (
@@ -621,16 +695,9 @@ const OrderDetailsPage = () => {
           {isPlaced && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
               <div className="mobile-actions-flex">
-                <button className="mobile-btn-accept" onClick={() => setShowAcceptModal(true)}>Accept Order</button>
-                <button className="mobile-btn-cancel" onClick={handleCancelOrder}>Cancel Order</button>
+                <button className="mobile-btn-accept" onClick={() => setShowAcceptModal(true)} disabled={cancelling}>Accept Order</button>
+                <button className="mobile-btn-cancel" onClick={() => navigate(`/dashboard/orders/cancel/${tableId}`, { state: { fromTab } })} disabled={cancelling}>Cancel Order</button>
               </div>
-              <button 
-                className="mobile-btn-accept" 
-                onClick={handleTrackOrderClick}
-                style={{ width: '100%', height: '48px', margin: 0 }}
-              >
-                Track Shipment
-              </button>
               {!trackingId.trim() && trackerError && (
                 <p className="tracker-error-msg" style={{ textAlign: 'center', margin: 0 }}>Tracker is not available for this product</p>
               )}
@@ -642,20 +709,12 @@ const OrderDetailsPage = () => {
                 <button 
                   className="mobile-btn-accept" 
                   onClick={handleOpenShipmentModal}
-                  disabled={loadingShippingData}
+                  disabled={loadingShippingData || cancelling}
                 >
                   {loadingShippingData ? "Loading..." : "Create Shipment"}
                 </button>
-                <button className="mobile-btn-cancel" onClick={handleCancelOrder} disabled={loadingShippingData}>Cancel</button>
+                <button className="mobile-btn-cancel" onClick={() => navigate(`/dashboard/orders/cancel/${tableId}`, { state: { fromTab } })} disabled={loadingShippingData || cancelling}>Cancel Order</button>
               </div>
-              <button 
-                className="mobile-btn-accept" 
-                onClick={handleTrackOrderClick}
-                style={{ width: '100%', height: '48px', margin: 0 }}
-                disabled={loadingShippingData}
-              >
-                Track Shipment
-              </button>
               {!trackingId.trim() && trackerError && (
                 <p className="tracker-error-msg" style={{ textAlign: 'center', margin: 0 }}>Tracker is not available for this product</p>
               )}
@@ -668,13 +727,6 @@ const OrderDetailsPage = () => {
                   <p className="status-title" style={{ margin: 0 }}>Shipped</p>
                   {trackingId && <p className="tracking-title" style={{ margin: 0 }}>ID: {trackingId}</p>}
                 </div>
-                <button 
-                  className="mobile-btn-accept" 
-                  onClick={handleTrackOrderClick}
-                  style={{ flex: 1, height: '48px', margin: 0 }}
-                >
-                  Track Shipment
-                </button>
                 {trackingId && (
                   <button 
                     className="mobile-btn-cancel" 
@@ -711,7 +763,7 @@ const OrderDetailsPage = () => {
                   onClick={handleTrackOrderClick}
                   style={{ flex: 1, height: '48px', margin: 0 }}
                 >
-                  Track Shipment
+                  Track Order
                 </button>
               </div>
               {!trackingId.trim() && trackerError && (
@@ -728,7 +780,7 @@ const OrderDetailsPage = () => {
       {showAcceptModal && (
         <div className="modal-overlay">
           <div className="bottom-sheet-modal">
-            <h3>Are you sure want to accept this order</h3>
+            <h3>Are you sure you want to accept this order?</h3>
             <p className="order-sheet-id">ID: {details.orderId}</p>
             <div className="sheet-modal-actions">
               <button className="btn-sheet-confirm" onClick={handleAcceptOrder}>Yes</button>
@@ -762,6 +814,8 @@ const OrderDetailsPage = () => {
           </div>
         </div>
       )}
+
+
 
       {/* Toast Notification */}
       {toast.show && (

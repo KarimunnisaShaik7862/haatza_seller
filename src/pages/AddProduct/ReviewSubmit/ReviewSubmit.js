@@ -8,11 +8,9 @@ import {
   buildCreatePayload,
   buildUpdatePayload,
   resolveWixImage,
-} from "../../../api/listingApi";
-import {
   getCachedSellerId,
   getCachedSellerPinCode,
-} from "../../../api/sellerProfileApi";
+} from "../../../services/sellerService";
 
 /* ── SVG ICONS ── */
 const ArrowLeftIcon = ({ size = 16 }) => (

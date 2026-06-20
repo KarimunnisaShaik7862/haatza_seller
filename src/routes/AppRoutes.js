@@ -6,6 +6,7 @@ import SignInPage    from "../pages/auth/SignInPage";
 import SignUpPage    from "../pages/auth/SignUpPage";
 import OtpPage       from "../pages/auth/OtpPage";
 import OnboardingPage from "../pages/Onboarding/Onboarding";
+import WarehouseGetStarted from "../pages/Warehouse/WarehouseGetStarted";
 
 // ─── Dashboard Shell (new layout with Outlet + session validation) ─────────────
 const DashboardLayout = lazy(() => import("../components/Layout/DashboardLayout/DashboardLayout"));
@@ -16,6 +17,10 @@ const InventoryPage      = lazy(() => import("../pages/Inventory/InventoryPage")
 const WalletPage         = lazy(() => import("../pages/Wallet/WalletPage"));
 const NotificationsPage  = lazy(() => import("../pages/Notifications/NotificationsPage"));
 const SettingsPage       = lazy(() => import("../pages/Settings/SettingsPage"));
+const TermsPage = lazy(() => import("../pages/Settings/TermsPage.js"));
+const PrivacyPolicyPage = lazy(() => import("../pages/Settings/PrivacyPolicyPage"));
+const PricingPage = lazy(() => import("../pages/Settings/PricingPage"));
+const ShippingReturnPage = lazy(() => import("../pages/Settings/ShippingReturnPage"));
 const SettlementsPage    = lazy(() => import("../pages/Settlements/SettlementsPage"));
 const HelpPage           = lazy(() => import("../pages/Help/HelpPage"));
 const AdvertisementPage  = lazy(() => import("../pages/Advertisement/AdvertisementPage"));
@@ -40,6 +45,14 @@ const PromotionPage      = lazy(() => import("../pages/AddProduct/Promotionpage/
 const ReviewSubmitPage   = lazy(() => import("../pages/AddProduct/ReviewSubmit/ReviewSubmit"));
 const MyListings         = lazy(() => import("../pages/AddProduct/MyListings/MyListings"));
 const InProgressListings = lazy(() => import("../pages/AddProduct/InProgressListings/InProgressListings"));
+const ReturnExchange     = lazy(() => import("../pages/ReturnExchange/ReturnExchange.jsx"));
+const ReturnDetailsPage  = lazy(() => import("../pages/ReturnExchange/ReturnDetailsPage.jsx"));
+const ProductInsightsList = lazy(() => import("../pages/ProductInsights/ProductInsightsList/ProductInsightsList"));
+const ProductInsightDetails = lazy(() => import("../pages/ProductInsights/ProductInsightDetails/ProductInsightDetails"));
+const CancelShipmentPage = lazy(() => import("../components/orders/CancelShipmentPage/CancelShipmentPage"));
+const InfluenceBranding  = lazy(() => import("../pages/InfluenceBranding/InfluenceBranding"));
+const InfluenceBrandingDetails = lazy(() => import("../pages/InfluenceBranding/InfluenceBrandingDetails"));
+const WarehousePage = lazy(() => import("../pages/Warehouse/Warehouse"));
 
 // ─── Loading Spinner ──────────────────────────────────────────────────────────
 const PageLoader = () => (
@@ -103,8 +116,14 @@ function AppRoutes() {
           <Route path="/dashboard/inventory"    element={<InventoryPage />} />
           <Route path="/dashboard/settlements"  element={<SettlementsPage />} />
           <Route path="/dashboard/settings"     element={<SettingsPage />} />
+          <Route path="/dashboard/settings/terms" element={<TermsPage />} />
+          <Route path="/dashboard/settings/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/dashboard/settings/pricing" element={<PricingPage />} />
+          <Route path="/dashboard/settings/shipping" element={<ShippingReturnPage />} />
           <Route path="/dashboard/wallet"       element={<WalletPage />} />
           <Route path="/dashboard/notifications" element={<NotificationsPage />} />
+          <Route path="/wallet"                 element={<WalletPage />} />
+          <Route path="/notifications"          element={<NotificationsPage />} />
           <Route path="/dashboard/help"         element={<HelpPage />} />
 
           {/* Advertisement */}
@@ -118,18 +137,27 @@ function AppRoutes() {
           {/* Orders */}
           <Route path="/dashboard/orders"                      element={<OrdersPage />} />
           <Route path="/dashboard/orders/details/:tableId"     element={<OrderDetailsPage />} />
+          <Route path="/dashboard/orders/cancel/:tableId"      element={<CancelShipmentPage />} />
           <Route path="/dashboard/orders/tracking/:waybill"    element={<TrackingPage />} />
           <Route path="/dashboard/orders/confirmed"            element={<ConfirmedOrdersPage />} />
           <Route path="/dashboard/orders/shipped"              element={<ShippedOrdersPage />} />
           <Route path="/dashboard/orders/cancelled"            element={<CancelledOrdersPage />} />
 
           {/* Placeholder sidebar pages */}
-          <Route path="/dashboard/return-exchange"  element={<PlaceholderPage title="Return / Exchange" />} />
-          <Route path="/dashboard/returns"          element={<PlaceholderPage title="Return / Exchange" />} />
+          <Route path="/dashboard/return-exchange"  element={<ReturnExchange />} />
+          <Route path="/dashboard/returns"          element={<ReturnExchange />} />
+          <Route path="/dashboard/returns/details/:tableId"  element={<ReturnDetailsPage />} />
+          <Route path="/returns"                    element={<ReturnExchange />} />
+          <Route path="/returns/details/:tableId"   element={<ReturnDetailsPage />} />
+          <Route path="/return-exchange"            element={<ReturnExchange />} />
+          <Route path="/return-exchange/details/:tableId"   element={<ReturnDetailsPage />} />
           <Route path="/dashboard/growplan"         element={<PlaceholderPage title="Grow Plan" />} />
-          <Route path="/dashboard/productinsight"   element={<PlaceholderPage title="Product Insight" />} />
-          <Route path="/dashboard/warehouse"        element={<PlaceholderPage title="Warehouse" />} />
-          <Route path="/dashboard/influencer"       element={<PlaceholderPage title="Influencer Branding" />} />
+          <Route path="/dashboard/productinsight"   element={<ProductInsightsList />} />
+          <Route path="/product-insight/:tableId"   element={<ProductInsightDetails />} />
+          <Route path="/dashboard/warehouse"        element={<WarehousePage />} />
+          <Route path="/warehouse/get-started" element={<WarehouseGetStarted />} />
+          <Route path="/dashboard/influencer"       element={<InfluenceBranding />} />
+          <Route path="/dashboard/influencer/details/:tableId" element={<InfluenceBrandingDetails />} />
           <Route path="/dashboard/growthcentral"    element={<PlaceholderPage title="Growth Central" />} />
           <Route path="/dashboard/qualityinsights"  element={<PlaceholderPage title="Quality Insights" />} />
           <Route path="/dashboard/referandearn"     element={<PlaceholderPage title="Refer & Earn" />} />

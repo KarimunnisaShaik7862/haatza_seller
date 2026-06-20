@@ -936,19 +936,19 @@ if (sellerId) {
       sessionStorage.setItem("userEmail", userEmail);
     }
 
-    // Cache tradeName as sellerName
+    // Cache tradeName as companyName
     const companyName = form.tradeName.trim();
     if (companyName) {
-      localStorage.setItem("sellerName", companyName);
-      sessionStorage.setItem("sellerName", companyName);
+      localStorage.setItem("companyName", companyName);
+      sessionStorage.setItem("companyName", companyName);
       try {
         const currentUser = JSON.parse(sessionStorage.getItem("haatza_user") || localStorage.getItem("haatza_user") || "{}");
-        currentUser.name = companyName;
+        currentUser.companyName = companyName;
         currentUser.email = currentUser.email || userEmail;
         sessionStorage.setItem("haatza_user", JSON.stringify(currentUser));
         localStorage.setItem("haatza_user", JSON.stringify(currentUser));
       } catch {}
-      console.log("[Onboarding] ✅ sellerName saved to storage:", companyName);
+      console.log("[Onboarding] ✅ companyName saved to storage:", companyName);
     }
 
     navigate('/dashboard');

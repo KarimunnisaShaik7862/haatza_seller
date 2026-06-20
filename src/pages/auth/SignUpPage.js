@@ -1,22 +1,14 @@
-import React, { useState, useRef } from "react";import { useNavigate } from "react-router-dom";
+import React, { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import SignUpForm from "../../components/auth/SignUpForm/SignUpForm";
-import { registerUser } from "../../api/RegisterApi";
+import { registerUser } from "../../services/sellerService";
 import { saveUser } from '../../utils/userStore';
+import { useAuth } from "../../context/AuthContext";
 export let registeredEmail = '';
-/**
- * SignUpPage — route-level container for the sign-up / registration flow
- *
- * Mounted at: /signup
- *
- * Owns:
- *   - All API calls (registerUser, which internally calls checkSeller)
- *   - Form state
- *   - Success / error state derived from API responses
- *   - Navigation via react-router-dom useNavigate
- *   - Redirects to /signin after successful registration
- */
+
 function SignUpPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [form, setForm] = useState({
     fullName: "",
@@ -54,11 +46,11 @@ console.log("[SignUpPage] Seller ID:", result.sellerId || "Not found in response
     sessionStorage.setItem('userEmail', form.email.toLowerCase().trim());
     localStorage.setItem('userEmail', form.email.toLowerCase().trim());
 
-    // Cache seller name and call saveUser
-    saveUser({ name: form.fullName.trim(), email: form.email.toLowerCase().trim(), phone: form.phone.trim() });
+    // Cache seller name and call saveUser / login context
+    login({ name: form.fullName.trim(), email: form.email.toLowerCase().trim(), phone: form.phone.trim() });
     localStorage.setItem("sellerName", form.fullName.trim());
     sessionStorage.setItem("sellerName", form.fullName.trim());
-    console.log("[SignUpPage] ✅ Cached sellerName and user info from signup:", form.fullName.trim());
+    console.log("[SignUpPage] ✅ Cached sellerName and initialized signup login context:", form.fullName.trim());
 
     // sellerId is returned by registerUser if backend includes it
     if (result.sellerId) {

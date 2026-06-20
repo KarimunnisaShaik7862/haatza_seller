@@ -8,7 +8,8 @@ import {
   AlertTriangle, Plus, ChevronLeft, ChevronRight, MoreVertical, ArrowLeft,
   ChevronDown, ChevronUp,
 } from "lucide-react";
-import { fetchSellerListings, fetchProductDetails } from "../../../api/MyListingsApi";
+import { fetchSellerListings, fetchProductDetails } from "../../../services/sellerService";
+import { resolveSellerEmail } from "../../../utils/sellerSession";
 import "./MyListings.css";
 
 // ─── Wix Image Utilities ──────────────────────────────────────────────────────
@@ -122,6 +123,9 @@ const FALLBACK_IMG_SMALL =
 
 const getSellerEmail = (locationState) => {
   if (locationState?.email) return locationState.email;
+
+  const resolved = resolveSellerEmail();
+  if (resolved) return resolved;
 
   const sessionKeys = ["pendingEmail", "userEmail", "email", "sellerEmail",
                        "user_email", "seller_email", "currentUserEmail"];

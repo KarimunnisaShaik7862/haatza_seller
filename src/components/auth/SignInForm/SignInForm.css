@@ -821,3 +821,157 @@ input:disabled {
     margin: -4px 0 6px 0;
   }
 }
+
+/* ── Forgot Password? Link & Popup Styles ── */
+.forgot-password-container {
+  position: relative;
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.forgot-password-link {
+  background: none;
+  border: none;
+  font-size: clamp(12px, 1.1vw, 13.5px);
+  color: #2563eb;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+.forgot-password-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+/* Confirmation Popup */
+.forgot-confirm-popup {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(26, 29, 35, 0.15);
+  border: 1px solid #e2e8f0;
+  z-index: 200;
+  animation: forgotSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.forgot-confirm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.forgot-confirm-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1d23;
+}
+
+.forgot-confirm-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #8a8fa8;
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+}
+
+.forgot-confirm-close:hover {
+  color: #1a1d23;
+}
+
+.forgot-confirm-msg {
+  margin: 0;
+  font-size: 13px;
+  color: #5a607f;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+.forgot-confirm-error {
+  background: #fff1f2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.forgot-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.forgot-confirm-btn {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  transition: background 0.12s;
+  font-family: inherit;
+}
+
+.forgot-confirm-btn.no {
+  background: #f1f3f6;
+  color: #5a607f;
+}
+
+.forgot-confirm-btn.no:hover {
+  background: #e8eaf0;
+}
+
+.forgot-confirm-btn.yes {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.forgot-confirm-btn.yes:hover {
+  background: #1d4ed8;
+}
+
+/* ── Sign In Page Toast Notification ── */
+.signin-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #10b981;
+  color: #ffffff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  z-index: 1000;
+  animation: forgotSlideUpToast 0.3s ease-out;
+}
+
+.signin-toast.error {
+  background: #ef4444;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+@keyframes forgotSlideUp {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes forgotSlideUpToast {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

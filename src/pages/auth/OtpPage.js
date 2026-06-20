@@ -1,16 +1,17 @@
-// OtpPage.js
+// OtpPage.js - updated code check
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import OtpScreen from "../../components/auth/OtpScreen/OtpScreen";
-import { generateOtp, verifyOtp, resendOtp } from "../../api/OtpApi";
-import { checkOnboardStatus } from "../../api/OnboardStatusApi";
+import { generateOtp, verifyOtp, resendOtp, checkOnboardStatus } from "../../services/sellerService";
 import { saveUser } from "../../utils/userStore";
+import { useAuth } from "../../context/AuthContext";
 const OTP_LENGTH    = 6;
 const TIMER_SECONDS = 60;
 
 function OtpPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
 
   const routeState    = location.state || {};
   const phone         = routeState.phone || routeState.contact || "";
@@ -92,6 +93,12 @@ function OtpPage() {
       .then(async (verifyResponse) => {
         clearInterval(timerRef.current);
         setSuccessMsg("Verified successfully! Checking your account…");
+
+        console.log("OTP Verification Success:", verifyResponse);
+        console.log("User Data:", verifyResponse.user);
+
+        const userData = verifyResponse.user || verifyResponse.seller || (verifyResponse.message && verifyResponse.message.seller) || verifyResponse;
+        console.log("OTP Login User Data:", userData);
 
         // ── Extract email from verify response ─────────────────────────
         const emailFromResponse =
@@ -180,31 +187,133 @@ if (sellerPinCodeFromOtp && /^\d{6}$/.test(String(sellerPinCodeFromOtp).trim()))
         console.log("[OtpPage] ✅ Email saved to storage:", emailToUse);
 
         // ── Extract and save seller name from verify OTP response ─────────────
+        let p = verifyResponse?.message || verifyResponse?.data || verifyResponse || {};
+        if (Array.isArray(p)) {
+          p = p[0] || {};
+        }
+        const actualData = (typeof p === "string") ? (verifyResponse?.data || verifyResponse || {}) : p;
+        let extractedSeller = actualData.seller || actualData.data || actualData;
+        if (Array.isArray(extractedSeller)) {
+          extractedSeller = extractedSeller[0] || {};
+        }
+
         const nameFromResponse =
-          verifyResponse?.message?.seller?.fullName ||
-          verifyResponse?.message?.seller?.name ||
-          verifyResponse?.message?.seller?.companyName ||
-          verifyResponse?.message?.seller?.tradeName ||
-          verifyResponse?.seller?.fullName ||
-          verifyResponse?.seller?.name ||
-          verifyResponse?.seller?.companyName ||
-          verifyResponse?.seller?.tradeName ||
-          verifyResponse?.fullName ||
-          verifyResponse?.name ||
-          verifyResponse?.companyName ||
-          verifyResponse?.tradeName ||
+          extractedSeller.fullName ||
+          (extractedSeller.firstName ? (extractedSeller.firstName + (extractedSeller.lastName ? " " + extractedSeller.lastName : "")).trim() : "") ||
+          extractedSeller.name ||
+          extractedSeller.nickname ||
+          extractedSeller.sellerName ||
+          actualData.fullName ||
+          (actualData.firstName ? (actualData.firstName + (actualData.lastName ? " " + actualData.lastName : "")).trim() : "") ||
+          actualData.name ||
+          actualData.nickname ||
+          actualData.sellerName ||
+          routeState.fullName ||
           "";
 
-        if (nameFromResponse) {
-          localStorage.setItem("sellerName", nameFromResponse);
-          sessionStorage.setItem("sellerName", nameFromResponse);
-          saveUser({
-            name: nameFromResponse,
-            email: emailToUse,
-            phone: phone || "",
-          });
-          console.log("[OtpPage] ✅ sellerName and user saved to storage:", nameFromResponse);
+        const companyNameFromResponse =
+          extractedSeller.companyName ||
+          extractedSeller.company_name ||
+          extractedSeller.storeName ||
+          extractedSeller.store_name ||
+          extractedSeller.tradeName ||
+          extractedSeller.trade_name ||
+          extractedSeller.businessName ||
+          extractedSeller.business_name ||
+          actualData.companyName ||
+          actualData.company_name ||
+          actualData.storeName ||
+          actualData.store_name ||
+          actualData.tradeName ||
+          actualData.trade_name ||
+          actualData.businessName ||
+          actualData.business_name ||
+          "";
+
+        const phoneFromResponse =
+          extractedSeller.phone ||
+          extractedSeller.phonenumber ||
+          extractedSeller.phone_number ||
+          extractedSeller.mobile_number ||
+          extractedSeller.contact ||
+          extractedSeller.mobile ||
+          actualData.phone ||
+          actualData.phonenumber ||
+          actualData.phone_number ||
+          actualData.mobile_number ||
+          actualData.contact ||
+          actualData.mobile ||
+          "";
+
+        const logoUrlFromResponse =
+          extractedSeller.logoUrl ||
+          extractedSeller.logo ||
+          extractedSeller.profileImage ||
+          extractedSeller.profileImg ||
+          actualData.logoUrl ||
+          actualData.logo ||
+          actualData.profileImage ||
+          actualData.profileImg ||
+          "";
+
+        const storedName =
+          localStorage.getItem("sellerFullName") ||
+          sessionStorage.getItem("sellerFullName") ||
+          localStorage.getItem("__haatza_sellerName") ||
+          sessionStorage.getItem("__haatza_sellerName") ||
+          localStorage.getItem("sellerName") ||
+          sessionStorage.getItem("sellerName") ||
+          "";
+
+        const finalName = nameFromResponse || routeState.fullName || (storedName && storedName !== "Seller" ? storedName : "");
+        const finalCompanyName = companyNameFromResponse || (finalName !== "Seller" ? finalName : "") || "";
+        const finalPhone = phone || phoneFromResponse || "";
+
+        if (finalName && finalName !== "Seller") {
+          localStorage.setItem("sellerName", finalName);
+          sessionStorage.setItem("sellerName", finalName);
         }
+
+        if (finalCompanyName && finalCompanyName !== "Seller") {
+          localStorage.setItem("companyName", finalCompanyName);
+          sessionStorage.setItem("companyName", finalCompanyName);
+        }
+
+        if (finalPhone) {
+          localStorage.setItem("sellerPhone", finalPhone);
+          sessionStorage.setItem("sellerPhone", finalPhone);
+        }
+
+        const mappedUserData = {
+          email: emailToUse,
+          phone: finalPhone,
+          sellerId: sellerIdFromOtp,
+          companyName: finalCompanyName,
+          GSTIN: verifyResponse.GSTIN || verifyResponse.gstin || (verifyResponse.message?.seller?.gstin) || "",
+          address: verifyResponse.address || (verifyResponse.message?.seller?.address) || "",
+          pincode: sellerPinCodeFromOtp,
+          nickname: verifyResponse.nickname || "",
+          storageType: verifyResponse.storageType || "Seller",
+          logoUrl: logoUrlFromResponse || "",
+        };
+
+        localStorage.setItem("sellerData", JSON.stringify(mappedUserData));
+        console.log("OTP Login User Data:", mappedUserData);
+
+        login({
+          name: finalName,
+          companyName: finalCompanyName,
+          email: emailToUse,
+          phone: finalPhone,
+          logoUrl: logoUrlFromResponse || "",
+          sellerId: sellerIdFromOtp,
+          gstin: mappedUserData.GSTIN,
+          address: mappedUserData.address,
+          pincode: sellerPinCodeFromOtp,
+          nickname: mappedUserData.nickname,
+          storageType: mappedUserData.storageType,
+        });
+        console.log("[OtpPage] ✅ sellerName and user context initialized:", finalName);
 
 try {
   console.log("[OtpPage] Checking onboard status for:", emailToUse);

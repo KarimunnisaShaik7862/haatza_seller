@@ -1,10 +1,11 @@
 import axios from "axios";
-import { resolveSellerId as sessionResolveSellerId, getSellerId as sessionGetSellerId, resolveSellerEmail } from "../utils/sellerSession";
+import { resolveSellerId as sessionResolveSellerId, getSellerId as sessionGetSellerId, resolveSellerEmail, resolveSellerPhone, resolveSellerName } from "../utils/sellerSession";
 
 export const resolveSellerId = sessionResolveSellerId;
 const getSellerId = sessionGetSellerId;
 export const resolveSellerEmailForApi = resolveSellerEmail;
-
+export const resolveSellerPhoneForApi = resolveSellerPhone;
+export const resolveSellerNameForApi = resolveSellerName;
 // Safely check environment for both Vite and Webpack/CRA compatibility
 const checkDev = () => {
   try {
@@ -482,13 +483,52 @@ export const checkSeller = async (contact) => {
       timeout: 10000,
     });
     const data = response.data;
-
+    
     if (data?.status !== "success") {
       throw new Error(data?.message || "Unexpected response from server.");
     }
 
-    const sellerObj = data.message?.seller || data.message || {};
-    const fullName = sellerObj.fullName || sellerObj.name || sellerObj.companyName || sellerObj.tradeName || "";
+    let p = data.message || data.data || data || {};
+    if (Array.isArray(p)) {
+      p = p[0] || {};
+    }
+    const actualData = (typeof p === "string") ? (data.data || data || {}) : p;
+    let sellerObj = actualData.seller || actualData.data || actualData;
+    if (Array.isArray(sellerObj)) {
+      sellerObj = sellerObj[0] || {};
+    }
+
+    const fullName =
+      sellerObj.fullName ||
+      (sellerObj.firstName ? (sellerObj.firstName + (sellerObj.lastName ? " " + sellerObj.lastName : "")).trim() : "") ||
+      sellerObj.name ||
+      sellerObj.nickname ||
+      sellerObj.sellerName ||
+      actualData.fullName ||
+      (actualData.firstName ? (actualData.firstName + (actualData.lastName ? " " + actualData.lastName : "")).trim() : "") ||
+      actualData.name ||
+      actualData.nickname ||
+      actualData.sellerName ||
+      "";
+
+    const companyName =
+      sellerObj.companyName ||
+      sellerObj.company_name ||
+      sellerObj.storeName ||
+      sellerObj.store_name ||
+      sellerObj.tradeName ||
+      sellerObj.trade_name ||
+      sellerObj.businessName ||
+      sellerObj.business_name ||
+      actualData.companyName ||
+      actualData.company_name ||
+      actualData.storeName ||
+      actualData.store_name ||
+      actualData.tradeName ||
+      actualData.trade_name ||
+      actualData.businessName ||
+      actualData.business_name ||
+      "";
 
     const sellerId =
       sellerObj.sellerId ||
@@ -498,8 +538,10 @@ export const checkSeller = async (contact) => {
       sellerObj.uid ||
       sellerObj.SellerID ||
       sellerObj.Seller_ID ||
-      data?.message?.sellerId ||
-      data?.message?.seller_id ||
+      actualData.sellerId ||
+      actualData.seller_id ||
+      actualData.uid ||
+      actualData.id ||
       data?.sellerId ||
       data?.seller_id ||
       data?.SellerID ||
@@ -514,12 +556,61 @@ export const checkSeller = async (contact) => {
       console.log("[sellerService] ✅ checkSeller cached sellerId:", sid);
     }
 
+    const resolvedEmail =
+      sellerObj.email ||
+      actualData.email ||
+      data.email ||
+      (contactType === "email" ? contact : "");
+
+    const resolvedPhone =
+      sellerObj.phone ||
+      sellerObj.phonenumber ||
+      sellerObj.phone_number ||
+      sellerObj.mobile_number ||
+      sellerObj.contact ||
+      sellerObj.mobile ||
+      actualData.phone ||
+      actualData.phonenumber ||
+      actualData.phone_number ||
+      actualData.mobile_number ||
+      actualData.contact ||
+      actualData.mobile ||
+      data.phone ||
+      data.contact ||
+      (contactType === "phone" ? contact : "");
+
+    if (resolvedEmail) {
+      localStorage.setItem("sellerEmail", resolvedEmail);
+      sessionStorage.setItem("sellerEmail", resolvedEmail);
+      localStorage.setItem("__haatza_sellerEmail", resolvedEmail);
+      sessionStorage.setItem("__haatza_sellerEmail", resolvedEmail);
+    }
+    if (resolvedPhone) {
+      localStorage.setItem("sellerPhone", resolvedPhone);
+      sessionStorage.setItem("sellerPhone", resolvedPhone);
+      localStorage.setItem("__haatza_sellerPhone", resolvedPhone);
+      sessionStorage.setItem("__haatza_sellerPhone", resolvedPhone);
+    }
+    if (fullName) {
+      localStorage.setItem("sellerFullName", fullName);
+      sessionStorage.setItem("sellerFullName", fullName);
+      localStorage.setItem("__haatza_sellerName", fullName);
+      sessionStorage.setItem("__haatza_sellerName", fullName);
+      localStorage.setItem("sellerName", fullName);
+      sessionStorage.setItem("sellerName", fullName);
+    }
+    if (companyName) {
+      localStorage.setItem("companyName", companyName);
+      sessionStorage.setItem("companyName", companyName);
+    }
+
     return {
       userExists: data.message.userExists,
       contactType,
-      email: data.message.email || "",
-      phone: data.message.phone || "",
+      email: resolvedEmail,
+      phone: resolvedPhone,
       fullName: fullName || "",
+      companyName: companyName || fullName || "",
       sellerId: sellerId || "",
     };
   } catch (err) {
@@ -558,6 +649,9 @@ export const getUserProfile = async (email) => {
 };
 
 export const getCachedSellerId = () => {
+  const resolved = resolveSellerId();
+  if (resolved) return resolved.trim();
+
   const CANONICAL_SELLER_KEY  = "__haatza_sellerId";
   const val =
     sessionStorage.getItem(CANONICAL_SELLER_KEY) ||
@@ -571,7 +665,57 @@ export const getCachedSellerId = () => {
   return val.trim();
 };
 
+export const getCachedSellerEmail = () => {
+  const resolved = resolveSellerEmailForApi();
+  if (resolved) return resolved.trim();
+
+  const CANONICAL_EMAIL_KEY = "__haatza_sellerEmail";
+  const val =
+    sessionStorage.getItem(CANONICAL_EMAIL_KEY) ||
+    localStorage.getItem(CANONICAL_EMAIL_KEY)   ||
+    sessionStorage.getItem("sellerEmail")        ||
+    localStorage.getItem("sellerEmail")          ||
+    "";
+  return val.trim();
+};
+
+export const getCachedSellerPhone = () => {
+  const resolved = resolveSellerPhoneForApi();
+  if (resolved) return resolved.trim();
+
+  const CANONICAL_PHONE_KEY = "__haatza_sellerPhone";
+  const val =
+    sessionStorage.getItem(CANONICAL_PHONE_KEY) ||
+    localStorage.getItem(CANONICAL_PHONE_KEY)   ||
+    sessionStorage.getItem("sellerPhone")        ||
+    localStorage.getItem("sellerPhone")          ||
+    "";
+  return val.trim();
+};
+
+export const getCachedSellerName = () => {
+  const resolved = resolveSellerNameForApi();
+  if (resolved) return resolved.trim();
+
+  const CANONICAL_NAME_KEY = "__haatza_sellerName";
+  const val =
+    sessionStorage.getItem(CANONICAL_NAME_KEY) ||
+    localStorage.getItem(CANONICAL_NAME_KEY)   ||
+    sessionStorage.getItem("sellerFullName")    ||
+    localStorage.getItem("sellerFullName")      ||
+    "";
+  return val.trim();
+};
+
 export const getCachedSellerPinCode = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem("haatzaSeller") || sessionStorage.getItem("haatzaSeller"));
+    const pin = stored?.pincode || stored?.pinCode || stored?.sellerPinCode || stored?.data?.pincode || stored?.data?.pinCode || stored?.data?.sellerPinCode;
+    if (pin && /^\d{6}$/.test(String(pin).trim())) {
+      return String(pin).trim();
+    }
+  } catch {}
+
   const CANONICAL_PIN_KEY     = "__haatza_sellerPinCode";
   const val =
     sessionStorage.getItem(CANONICAL_PIN_KEY) ||
@@ -1998,6 +2142,114 @@ export const verifyOtp = async (phone, otp) => {
     throw new Error(data?.message || "Invalid OTP. Please try again.");
   }
 
+  if (phone) {
+    localStorage.setItem("sellerPhone", phone);
+    sessionStorage.setItem("sellerPhone", phone);
+    localStorage.setItem("__haatza_sellerPhone", phone);
+    sessionStorage.setItem("__haatza_sellerPhone", phone);
+  }
+
+  try {
+    let p = data?.message || data?.data || data || {};
+    if (Array.isArray(p)) {
+      p = p[0] || {};
+    }
+    const actualData = (typeof p === "string") ? (data?.data || data || {}) : p;
+    let sellerObj = actualData.seller || actualData.data || actualData;
+    if (Array.isArray(sellerObj)) {
+      sellerObj = sellerObj[0] || {};
+    }
+
+    const verifiedName =
+      sellerObj.fullName ||
+      (sellerObj.firstName ? (sellerObj.firstName + (sellerObj.lastName ? " " + sellerObj.lastName : "")).trim() : "") ||
+      sellerObj.name ||
+      sellerObj.nickname ||
+      sellerObj.sellerName ||
+      actualData.fullName ||
+      (actualData.firstName ? (actualData.firstName + (actualData.lastName ? " " + actualData.lastName : "")).trim() : "") ||
+      actualData.name ||
+      actualData.nickname ||
+      actualData.sellerName ||
+      "";
+
+    const verifiedCompanyName =
+      sellerObj.companyName ||
+      sellerObj.company_name ||
+      sellerObj.storeName ||
+      sellerObj.store_name ||
+      sellerObj.tradeName ||
+      sellerObj.trade_name ||
+      sellerObj.businessName ||
+      sellerObj.business_name ||
+      actualData.companyName ||
+      actualData.company_name ||
+      actualData.storeName ||
+      actualData.store_name ||
+      actualData.tradeName ||
+      actualData.trade_name ||
+      actualData.businessName ||
+      actualData.business_name ||
+      "";
+
+    const resolvedPhone =
+      sellerObj.phone ||
+      sellerObj.phonenumber ||
+      sellerObj.phone_number ||
+      sellerObj.mobile_number ||
+      sellerObj.contact ||
+      sellerObj.mobile ||
+      actualData.phone ||
+      actualData.phonenumber ||
+      actualData.phone_number ||
+      actualData.mobile_number ||
+      actualData.contact ||
+      actualData.mobile ||
+      phone ||
+      "";
+
+    if (resolvedPhone) {
+      localStorage.setItem("sellerPhone", resolvedPhone);
+      sessionStorage.setItem("sellerPhone", resolvedPhone);
+      localStorage.setItem("__haatza_sellerPhone", resolvedPhone);
+      sessionStorage.setItem("__haatza_sellerPhone", resolvedPhone);
+    }
+
+    if (verifiedName) {
+      localStorage.setItem("sellerFullName", verifiedName);
+      sessionStorage.setItem("sellerFullName", verifiedName);
+      localStorage.setItem("__haatza_sellerName", verifiedName);
+      sessionStorage.setItem("__haatza_sellerName", verifiedName);
+      localStorage.setItem("sellerName", verifiedName);
+      sessionStorage.setItem("sellerName", verifiedName);
+    }
+
+    if (verifiedCompanyName) {
+      localStorage.setItem("companyName", verifiedCompanyName);
+      sessionStorage.setItem("companyName", verifiedCompanyName);
+    }
+    const verifiedSellerId =
+      sellerObj.sellerId ||
+      sellerObj.seller_id ||
+      sellerObj._id ||
+      sellerObj.id ||
+      actualData.sellerId ||
+      actualData.seller_id ||
+      actualData.uid ||
+      actualData.id ||
+      "";
+
+    if (verifiedSellerId && String(verifiedSellerId).trim().length > 2) {
+      const sid = String(verifiedSellerId).trim();
+      localStorage.setItem("sellerId", sid);
+      sessionStorage.setItem("sellerId", sid);
+      localStorage.setItem("__haatza_sellerId", sid);
+      sessionStorage.setItem("__haatza_sellerId", sid);
+    }
+  } catch (err) {
+    console.warn("[verifyOtp] Could not extract seller name/id from response:", err);
+  }
+
   return data;
 };
 
@@ -2093,11 +2345,34 @@ export const registerUser = async ({ fullName, phone, email, password }) => {
       localStorage.setItem("__haatza_sellerId", String(resolvedSellerId));
       sessionStorage.setItem("__haatza_sellerId", String(resolvedSellerId));
     }
+    if (email) {
+      const cleanEmail = email.toLowerCase().trim();
+      localStorage.setItem("sellerEmail", cleanEmail);
+      sessionStorage.setItem("sellerEmail", cleanEmail);
+      localStorage.setItem("__haatza_sellerEmail", cleanEmail);
+      sessionStorage.setItem("__haatza_sellerEmail", cleanEmail);
+    }
+    if (phone) {
+      localStorage.setItem("sellerPhone", phone);
+      sessionStorage.setItem("sellerPhone", phone);
+      localStorage.setItem("__haatza_sellerPhone", phone);
+      sessionStorage.setItem("__haatza_sellerPhone", phone);
+    }
+    if (fullName) {
+      const cleanName = fullName.trim();
+      localStorage.setItem("sellerFullName", cleanName);
+      sessionStorage.setItem("sellerFullName", cleanName);
+      localStorage.setItem("__haatza_sellerName", cleanName);
+      sessionStorage.setItem("__haatza_sellerName", cleanName);
+    }
 
     return {
       success: true,
       message: data?.message?.message || data?.message || "Account created successfully!",
       sellerId: resolvedSellerId,
+      email: email ? email.toLowerCase().trim() : "",
+      phone: phone || "",
+      fullName: fullName ? fullName.trim() : "",
     };
   }
 
@@ -2337,6 +2612,22 @@ export const getProductStats = async (sellerIdOrTableId) => {
     }
     throw err;
   }
+};
+
+export const getProductDetails = async (tableId) => {
+  const response = await axios.get(`${API_BASE_URL}/sellerProductDetails`, {
+    params: { Table_ID: tableId },
+    timeout: 15000,
+  });
+  return response.data;
+};
+
+export const getSellerProducts = async (email) => {
+  const response = await axios.get(`${API_BASE_URL}/seller_products`, {
+    params: { email, page: 1, limit: 100, type: "mylisting" },
+    timeout: 15000,
+  });
+  return response.data;
 };
 
 export const fetchWalletTransactions = async (sellerId) => {
@@ -2815,7 +3106,45 @@ export const fetchNotificationsList = async (sellerId) => {
   }
 };
 
+export const submitWarehouseRequest = async (payload) => {
+  const response = await axios.post(
+    `${BASE_URL}/sellerwarehouseRequest`,
+    payload,
+    { headers: { "Content-Type": "application/json" }, timeout: 15000 }
+  );
+  return response.data;
+};
 
+export const updateSellerOnboarding = async (email, updateFields) => {
+  if (!email) throw new Error("Seller email is required.");
+  const response = await axios.post(
+    `${PROFILE_BASE_URL}/updateSelleronboarding`,
+    { email, updateFields },
+    { headers: { "Content-Type": "application/json" }, timeout: 15000 }
+  );
+  return response.data;
+};
+
+export const forgotPassword = async (email) => {
+  if (!email) throw new Error("Seller email is required.");
+  const response = await axios.post(
+    `${PROFILE_BASE_URL}/forgotPassword`,
+    { email },
+    { headers: { "Content-Type": "application/json" }, timeout: 15000 }
+  );
+  return response.data;
+};
+
+export const loginUser = async (email, password) => {
+  if (!email) throw new Error("Seller email is required.");
+  if (!password) throw new Error("Password is required.");
+  const response = await axios.post(
+    `${PROFILE_BASE_URL}/userlogin`,
+    { email: email.toLowerCase().trim(), password },
+    { headers: { "Content-Type": "application/json" }, timeout: 15000 }
+  );
+  return response.data;
+};
 /* =============================================================================
    // AUDITED BACKEND API INTEGRATIONS
    ============================================================================= */
@@ -3055,6 +3384,130 @@ export const getDashboardDrawerMenu = async () => {
 
 
 /* =============================================================================
+   // ORDERS PAGE APIs (Consolidated)
+   ============================================================================= */
+
+export const RequestTypes = {
+  trackshipping: "https://haatza.com/_functions/trackshipping"
+};
+
+export const fetchTrackingDetails = async (trackingId) => {
+  const res = await fetch(`${RequestTypes.trackshipping}?waybill=${trackingId}`);
+  const data = await res.json();
+  console.log("Tracking Response", data);
+  return data;
+};
+
+export const updateOrdersstatus = async (orderId, sellerId, status) => {
+  const payload = { orderId: Number(orderId), sellerId, status };
+  console.log("updateOrdersstatus Request:", payload);
+  const res = await fetch(`${BASE_URL}/updateOrdersstatus`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  console.log("updateOrdersstatus Response:", data);
+  return data;
+};
+
+export const getDeliveryAmount = async (o_pin, d_pin, cgm) => {
+  const url = `${BASE_URL}/getDeliveryAmount?o_pin=${o_pin}&d_pin=${d_pin}&cgm=${cgm}`;
+  console.log("getDeliveryAmount Request:", url);
+  const res = await fetch(url);
+  const data = await res.json();
+  console.log("getDeliveryAmount Response:", data);
+  return data;
+};
+
+export const expectedTat = async (sellerPinCode, toPincode) => {
+  const url = `${BASE_URL}/expectedTat?sellerPinCode=${sellerPinCode}&toPincode=${toPincode}`;
+  console.log("expectedTat Request:", url);
+  const res = await fetch(url);
+  const data = await res.json();
+  console.log("expectedTat Response:", data);
+  return data;
+};
+
+export const createShipment = async (orderId, sellerId, trackingId) => {
+  const payload = {
+    orderId: Number(orderId),
+    sellerId,
+    OrderId: Number(orderId),
+    SellerId: sellerId,
+    trackingId: trackingId || "",
+    tracking_id: trackingId || "",
+    waybill: trackingId || "",
+    awb: trackingId || "",
+    AWB: trackingId || ""
+  };
+  console.log("createShipment Request:", payload);
+  const res = await fetch(`${BASE_URL}/createShipment`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  console.log("createShipment Response:", data);
+  return data;
+};
+
+export const cancelShipment = async (waybill) => {
+  const response = await axios.get(
+    `https://haatza.com/_functions/cancelShipment?waybill=${waybill}`
+  );
+  return response.data;
+};
+
+
+
+/* =============================================================================
+   // RETURN / EXCHANGE APIs (Consolidated)
+   ============================================================================= */
+
+export const fetchReturns = async (sellerId) => {
+  const resolvedSellerId = getOrResolveSellerId(sellerId);
+  const response = await axios.get(`${BASE_URL}/returns`, {
+    params: { sellerId: resolvedSellerId },
+    timeout: 15000,
+  });
+  return response.data;
+};
+
+export const createExchangeShipment = async (sellerId, exchangeOrderId) => {
+  const payload = {
+    sellerId: getOrResolveSellerId(sellerId),
+    exchangeOrderId
+  };
+  console.log("createExchangeShipment Request:", payload);
+  const response = await axios.post(`${BASE_URL}/ExchangecreateShipment`, payload, {
+    headers: { "Content-Type": "application/json" },
+    timeout: 15000,
+  });
+  console.log("createExchangeShipment Response:", response.data);
+  return response.data;
+};
+
+export const handleTrackShipment = async (trackingId) => {
+  const response = await axios.get(`${BASE_URL}/trackshipping`, {
+    params: { waybill: trackingId },
+    timeout: 15000,
+  });
+  return response.data;
+};
+
+export const handleDownloadPackingSlip = (trackingId) => {
+  const url = `${BASE_URL}/packingSlip?waybill=${trackingId}`;
+  window.open(url, "_blank");
+  return url;
+};
+
+
+/* =============================================================================
    DUAL PATTERN EXPORTS
    ============================================================================= */
 
@@ -3090,6 +3543,9 @@ export const sellerService = {
   fetchSellerDetails,
   getCachedSellerId,
   getCachedSellerPinCode,
+  getCachedSellerEmail,
+  getCachedSellerPhone,
+  getCachedSellerName,
   fetchCategories,
   fetchSubcategoriesFirstPage,
   fetchSubcategoriesPaged,
@@ -3148,6 +3604,8 @@ export const sellerService = {
   getSellerConfirmedOrdersCount,
   getTopSellingProducts,
   getProductStats,
+  getProductDetails,
+  getSellerProducts,
   deleteHaatzupVideo,
   getSellerHaatzUpDetails,
   generateHashtags,
@@ -3176,7 +3634,22 @@ export const sellerService = {
   getVideoResponse,
   fetchSellerCampaignProduct,
   fetchOrders,
-  fetchSellerOrders
+  fetchSellerOrders,
+  RequestTypes,
+  fetchTrackingDetails,
+  updateOrdersstatus,
+  getDeliveryAmount,
+  expectedTat,
+  createShipment,
+  cancelShipment,
+  fetchReturns,
+  createExchangeShipment,
+  handleTrackShipment,
+  handleDownloadPackingSlip,
+  submitWarehouseRequest,
+  updateSellerOnboarding,
+  forgotPassword,
+  loginUser,
 };
 
 export const advertisementService = {

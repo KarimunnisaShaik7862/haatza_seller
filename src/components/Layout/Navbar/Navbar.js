@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../../context/AuthContext";
 import "./Navbar.css";
 import haatzaSellerLogo from "../../../assets/Images/haatzaSellerlogo.png";
 import {
@@ -22,9 +23,12 @@ const getGreeting = () => {
   return "Good Evening";
 };
 
-const HaatzaNavbar = ({ seller = {} }) => {
+const HaatzaNavbar = ({ seller: propSeller = {} }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
+
+  const seller = user || propSeller;
 
   const [dropdownOpen, setDropdownOpen]         = useState(false);
   const [mobileIconsOpen, setMobileIconsOpen]   = useState(false);
@@ -41,9 +45,9 @@ const HaatzaNavbar = ({ seller = {} }) => {
 
   const greeting = getGreeting();
 
-  const sellerName    = seller?.name          || "";
+  const sellerName    = seller?.nickname || seller?.name || seller?.companyName || "";
   const sellerEmail   = seller?.email         || "";
-  const sellerRole    = seller?.role          || "";
+  const sellerRole    = seller?.role          || "Seller";
   const sellerInitial = seller?.avatarInitial || (sellerName ? sellerName.charAt(0).toUpperCase() : "");
   const sellerLogoUrl = seller?.logoUrl       || null;
 
@@ -98,11 +102,40 @@ const HaatzaNavbar = ({ seller = {} }) => {
   }, []);
 
   const dropdownItems = [
-    { icon: React.createElement(User,       { size: 16 }), label: "My Profile"       , danger: false },
-    { icon: React.createElement(Settings,   { size: 16 }), label: "Business Settings", danger: false },
-    { icon: React.createElement(Wallet,     { size: 16 }), label: "Wallet"           , danger: false },
-    { icon: React.createElement(HelpCircle, { size: 16 }), label: "Help Center"      , danger: false },
-    { icon: React.createElement(LogOut,     { size: 16 }), label: "Logout"           , danger: true  },
+    {
+      icon: React.createElement(User, { size: 16 }),
+      label: "My Profile",
+      danger: false,
+      onClick: () => { setDropdownOpen(false); navigate("/dashboard/settings"); }
+    },
+    {
+      icon: React.createElement(Settings, { size: 16 }),
+      label: "Business Settings",
+      danger: false,
+      onClick: () => { setDropdownOpen(false); navigate("/dashboard/settings"); }
+    },
+    {
+      icon: React.createElement(Wallet, { size: 16 }),
+      label: "Wallet",
+      danger: false,
+      onClick: () => { setDropdownOpen(false); navigate("/dashboard/wallet"); }
+    },
+    {
+      icon: React.createElement(HelpCircle, { size: 16 }),
+      label: "Help Center",
+      danger: false,
+      onClick: () => { setDropdownOpen(false); navigate("/dashboard/help"); }
+    },
+    {
+      icon: React.createElement(LogOut, { size: 16 }),
+      label: "Logout",
+      danger: true,
+      onClick: () => {
+        setDropdownOpen(false);
+        logout();
+        navigate("/signin");
+      }
+    },
   ];
 
   /* ── Avatar: letter or logo image ── */
@@ -329,7 +362,10 @@ const HaatzaNavbar = ({ seller = {} }) => {
                       "li", { key: i },
                       React.createElement(
                         "button",
-                        { className: `dropdown-item ${item.danger ? "danger" : ""}` },
+                        {
+                          className: `dropdown-item ${item.danger ? "danger" : ""}`,
+                          onClick: item.onClick
+                        },
                         React.createElement("span", { className: "di-icon"  }, item.icon),
                         React.createElement("span", { className: "di-label" }, item.label)
                       )

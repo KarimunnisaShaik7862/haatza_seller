@@ -15,9 +15,11 @@ import {
 } from "lucide-react";
 import { getSellerId } from "../../utils/sellerSession";
 import { sellerService } from "../../services/sellerService";
+import { useAuth } from "../../context/AuthContext";
 import "./DashboardPage.css";
 
 const DashboardPage = () => {
+  const { user } = useAuth();
   const sellerId = getSellerId();
   const sellerEmail = localStorage.getItem("userEmail") || sessionStorage.getItem("userEmail") || "";
   const navigate = useNavigate();
@@ -64,7 +66,17 @@ const DashboardPage = () => {
 
       // 1. Profile
       if (results[0].status === "fulfilled") {
-        setProfile(results[0].value?.message || results[0].value?.data || results[0].value);
+        const res = results[0].value;
+        let p = res?.message || res?.data || res || {};
+        if (Array.isArray(p)) {
+          p = p[0] || {};
+        }
+        const actualData = (typeof p === "string") ? (res?.data || res || {}) : p;
+        let sellerObj = actualData.seller || actualData.data || actualData;
+        if (Array.isArray(sellerObj)) {
+          sellerObj = sellerObj[0] || {};
+        }
+        setProfile(sellerObj);
       }
 
       // 2. New Orders
@@ -168,7 +180,24 @@ const DashboardPage = () => {
     );
   }
 
-  const sellerName = profile?.sellerName || profile?.companyName || "Seller";
+  const sellerName =
+    user?.nickname ||
+    user?.name ||
+    user?.companyName ||
+    profile?.nickname ||
+    profile?.name ||
+    profile?.companyName ||
+    profile?.company_name ||
+    profile?.fullName ||
+    (profile?.firstName ? (profile.firstName + (profile.lastName ? " " + profile.lastName : "")).trim() : "") ||
+    profile?.storeName ||
+    profile?.store_name ||
+    profile?.tradeName ||
+    profile?.trade_name ||
+    profile?.businessName ||
+    profile?.business_name ||
+    profile?.sellerName ||
+    "";
 
   return (
     <div className="dashboard-page-container">

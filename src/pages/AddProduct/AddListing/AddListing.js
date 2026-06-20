@@ -9,7 +9,7 @@ const AddListing = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [activeTab, setActiveTab] = useState(location.state?.tab || null); // null | "my-listings" | "inprogress"
+  const [activeTab, setActiveTab] = useState(location.state?.tab || "my-listings"); // "my-listings" | "inprogress"
 
   const [animatedRevenue, setAnimatedRevenue] = useState(0);
   const [animatedOrders,  setAnimatedOrders]  = useState(0);

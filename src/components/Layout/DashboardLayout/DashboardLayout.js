@@ -1,12 +1,32 @@
-// DashboardLayout.js  (updated — added ReviewSubmitPage routes)
-import React, { useState, useEffect } from "react";
+// DashboardLayout.js  (updated — added ReviewSubmitPage routes and AuthContext sync)
+import React, { useState, useEffect, useRef } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { sellerService } from "../../../services/sellerService";
 import { getSellerId } from "../../../utils/sellerSession";
+import { useAuth } from "../../../context/AuthContext";
 
 import HaatzaNavbar  from "../Navbar/Navbar";
 import Sidebar       from "../Sidebar/Sidebar";
 import "./DashboardLayout.css";
+
+// ─── Wix image helper ──────────────────────────────────────────────────────────
+const resolveLogoUrl = (url) => {
+  if (!url) return null;
+  const trimmed = String(url).trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("wix:image://")) {
+    const noScheme = trimmed.replace(/^wix:image:\/\/(?:v1\/)?/, "");
+    const fileId = noScheme.split("/")[0].split("#")[0].split("?")[0];
+    if (fileId) return `https://static.wixstatic.com/media/${fileId}`;
+  }
+  if (trimmed.length > 4 && !trimmed.includes(" ")) {
+    return `https://static.wixstatic.com/media/${trimmed}`;
+  }
+  return trimmed;
+};
 
 // ─── Read the real seller email from auth sources ─────────────────────────────
 const resolveSellerEmail = (locationState) => {
@@ -55,21 +75,43 @@ const resolveSellerEmail = (locationState) => {
 };
 
 // ─── Seller display data ───────────────────────────────────────────────────────
-const useSellerDisplayData = (resolvedEmail) => {
-  const [seller, setSeller] = useState(null);
+const useSellerDisplayData = (resolvedEmail, updateUser, currentUser) => {
   const [loadingProfile, setLoadingProfile] = useState(resolvedEmail ? true : false);
+  const fetchedEmailRef = useRef("");
+
+  const updateUserRef = useRef(updateUser);
+  const currentUserRef = useRef(currentUser);
+
+  updateUserRef.current = updateUser;
+  currentUserRef.current = currentUser;
 
   useEffect(() => {
     if (!resolvedEmail) {
-      setSeller(null);
       setLoadingProfile(false);
       return;
     }
+
+    if (fetchedEmailRef.current === resolvedEmail && currentUserRef.current?.profileFetched) {
+      setLoadingProfile(false);
+      return;
+    }
+
+    fetchedEmailRef.current = resolvedEmail;
     setLoadingProfile(true);
+
     sellerService.getUserProfile(resolvedEmail)
       .then((res) => {
-        const p = res?.message || res?.data || res || {};
-        const foundSellerId = p.sellerId || p.seller_id || p.uid || p.id;
+        console.log("[DashboardLayout] getUserProfile raw response:", JSON.stringify(res, null, 2));
+        let p = res?.message || res?.data || res || {};
+        if (Array.isArray(p)) {
+          p = p[0] || {};
+        }
+        const actualData = (typeof p === "string") ? (res?.data || res || {}) : p;
+        let sellerObj = actualData.seller || actualData.data || actualData;
+        if (Array.isArray(sellerObj)) {
+          sellerObj = sellerObj[0] || {};
+        }
+        const foundSellerId = sellerObj.sellerId || sellerObj.seller_id || sellerObj.uid || sellerObj.id || actualData.sellerId || actualData.seller_id || actualData.uid || actualData.id || res?.sellerId || res?.seller_id;
         if (foundSellerId) {
           const sid = String(foundSellerId).trim();
           localStorage.setItem("sellerId", sid);
@@ -77,39 +119,143 @@ const useSellerDisplayData = (resolvedEmail) => {
           localStorage.setItem("__haatza_sellerId", sid);
           sessionStorage.setItem("__haatza_sellerId", sid);
         }
-        setSeller({
-          name: p.sellerName || p.companyName || "Seller",
+        const resolvedName =
+          sellerObj.fullName ||
+          (sellerObj.firstName ? (sellerObj.firstName + (sellerObj.lastName ? " " + sellerObj.lastName : "")).trim() : "") ||
+          sellerObj.name ||
+          sellerObj.nickname ||
+          sellerObj.sellerName ||
+          actualData.fullName ||
+          (actualData.firstName ? (actualData.firstName + (actualData.lastName ? " " + actualData.lastName : "")).trim() : "") ||
+          actualData.name ||
+          actualData.nickname ||
+          actualData.sellerName ||
+          "";
+
+        const resolvedCompanyName =
+          sellerObj.companyName ||
+          sellerObj.company_name ||
+          sellerObj.storeName ||
+          sellerObj.store_name ||
+          sellerObj.tradeName ||
+          sellerObj.trade_name ||
+          sellerObj.businessName ||
+          sellerObj.business_name ||
+          actualData.companyName ||
+          actualData.company_name ||
+          actualData.storeName ||
+          actualData.store_name ||
+          actualData.tradeName ||
+          actualData.trade_name ||
+          actualData.businessName ||
+          actualData.business_name ||
+          "";
+
+        const resolvedPhone =
+          sellerObj.phone ||
+          sellerObj.phonenumber ||
+          sellerObj.phone_number ||
+          sellerObj.mobile_number ||
+          sellerObj.contact ||
+          sellerObj.mobile ||
+          actualData.phone ||
+          actualData.phonenumber ||
+          actualData.phone_number ||
+          actualData.mobile_number ||
+          actualData.contact ||
+          actualData.mobile ||
+          "";
+
+        const rawLogo =
+          sellerObj.logoUrl ||
+          sellerObj.logo ||
+          sellerObj.profileImage ||
+          sellerObj.profileImg ||
+          actualData.logoUrl ||
+          actualData.logo ||
+          actualData.profileImage ||
+          actualData.profileImg ||
+          "";
+
+        const resolvedLogoUrl = rawLogo ? resolveLogoUrl(rawLogo) : null;
+
+        const getSellerDataField = (field) => {
+          try {
+            const sd = JSON.parse(localStorage.getItem("sellerData"));
+            return sd?.[field] || "";
+          } catch { return ""; }
+        };
+
+        const currentContextName =
+          getSellerDataField("companyName") ||
+          localStorage.getItem("sellerFullName") ||
+          sessionStorage.getItem("sellerFullName") ||
+          localStorage.getItem("__haatza_sellerName") ||
+          sessionStorage.getItem("__haatza_sellerName") ||
+          currentUserRef.current?.name ||
+          localStorage.getItem("sellerName") ||
+          sessionStorage.getItem("sellerName") ||
+          "";
+        const finalName = (currentContextName && currentContextName !== "Seller")
+          ? currentContextName
+          : (resolvedName && resolvedName !== "Seller" ? resolvedName : "");
+
+        const currentContextCompanyName = getSellerDataField("companyName") || currentUserRef.current?.companyName || localStorage.getItem("companyName") || sessionStorage.getItem("companyName") || "";
+        const finalCompanyName = (currentContextCompanyName && currentContextCompanyName !== "Seller")
+          ? currentContextCompanyName
+          : (resolvedCompanyName && resolvedCompanyName !== "Seller" ? resolvedCompanyName : finalName);
+
+        const currentContextPhone = getSellerDataField("phone") || currentUserRef.current?.phone || localStorage.getItem("sellerPhone") || sessionStorage.getItem("sellerPhone") || "";
+        const finalPhone = resolvedPhone || currentContextPhone || "";
+
+        const finalSellerId = getSellerDataField("sellerId") || foundSellerId || "";
+        const finalGstin = getSellerDataField("GSTIN") || getSellerDataField("gstin") || sellerObj.gstin || "";
+        const finalAddress = getSellerDataField("address") || sellerObj.address || "";
+        const finalPincode = getSellerDataField("pincode") || sellerObj.pincode || sellerObj.pinCode || "";
+        const finalStorageType = getSellerDataField("storageType") || sellerObj.storageType || "";
+        const finalNickname = getSellerDataField("nickname") || sellerObj.nickname || "";
+
+        updateUserRef.current({
+          name: finalName,
+          companyName: finalCompanyName,
           email: resolvedEmail,
-          role: "Seller",
-          avatarInitial: (p.sellerName || p.companyName || "Seller")[0].toUpperCase(),
-          logoUrl: null,
+          phone: finalPhone,
+          logoUrl: resolvedLogoUrl || currentUserRef.current?.logoUrl || "",
+          profileFetched: true,
+          sellerId: finalSellerId,
+          GSTIN: finalGstin,
+          gstin: finalGstin,
+          address: finalAddress,
+          pincode: finalPincode,
+          storageType: finalStorageType,
+          nickname: finalNickname,
+          accountManager: sellerObj.accountManager || "",
+          bankName: sellerObj.bankName || "",
+          accountHolder: sellerObj.accountHolder || "",
+          accountNumber: sellerObj.accountNumber || "",
+          ifscCode: sellerObj.ifscCode || "",
+          panNumber: sellerObj.panNumber || "",
         });
       })
       .catch((err) => {
         console.warn("[DashboardLayout] getUserProfile failed, using fallback display:", err);
-        setSeller({
-          name: "Seller",
-          email: resolvedEmail,
-          role: "Seller",
-          avatarInitial: "S",
-          logoUrl: null,
-        });
       })
       .finally(() => {
         setLoadingProfile(false);
       });
   }, [resolvedEmail]);
 
-  return { seller, loadingProfile };
+  return { loadingProfile };
 };
 
 // ─── Main Layout ───────────────────────────────────────────────────────────────
 function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, updateUser } = useAuth();
 
-  const sellerEmail = resolveSellerEmail(location.state);
-  const { seller, loadingProfile }  = useSellerDisplayData(sellerEmail);
+  const sellerEmail = user?.email || resolveSellerEmail(location.state);
+  const { loadingProfile }  = useSellerDisplayData(sellerEmail, updateUser, user);
 
   const [sidebarOpen,      setSidebarOpen]      = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -131,6 +277,12 @@ function DashboardLayout() {
   const handleCollapseChange = (collapsed) => setSidebarCollapsed(collapsed);
 
   const activeSellerId = getSellerId();
+
+  useEffect(() => {
+    if (!sellerEmail || (!loadingProfile && !activeSellerId)) {
+      navigate("/signin", { replace: true });
+    }
+  }, [sellerEmail, loadingProfile, activeSellerId, navigate]);
 
   if (loadingProfile && !activeSellerId) {
     return (
@@ -156,64 +308,7 @@ function DashboardLayout() {
   }
 
   if (!sellerEmail || (!loadingProfile && !activeSellerId)) {
-    return (
-      <div style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        backgroundColor: "#f5f7ff",
-        fontFamily: "Inter, sans-serif",
-        padding: "24px",
-        textAlign: "center"
-      }}>
-        <div style={{
-          background: "#ffffff",
-          borderRadius: "16px",
-          padding: "40px",
-          boxShadow: "0 10px 25px rgba(0, 0, 0, 0.05)",
-          maxWidth: "440px",
-          width: "100%"
-        }}>
-          <div style={{
-            color: "#ef4444",
-            fontSize: "48px",
-            marginBottom: "16px"
-          }}>⚠️</div>
-          <h2 style={{
-            fontSize: "22px",
-            fontWeight: "700",
-            color: "#1f2937",
-            marginBottom: "12px"
-          }}>Session Expired</h2>
-          <p style={{
-            color: "#6b7280",
-            fontSize: "14px",
-            lineHeight: "1.5",
-            marginBottom: "24px"
-          }}>Seller session not found. Please login again.</p>
-          <button
-            onClick={() => navigate("/signin")}
-            style={{
-              backgroundColor: "#2563eb",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "8px",
-              padding: "12px 24px",
-              fontWeight: "600",
-              fontSize: "14px",
-              cursor: "pointer",
-              transition: "background-color 0.2s"
-            }}
-            onMouseOver={(e) => e.target.style.backgroundColor = "#1d4ed8"}
-            onMouseOut={(e) => e.target.style.backgroundColor = "#2563eb"}
-          >
-            Go to Sign In
-          </button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -224,14 +319,16 @@ function DashboardLayout() {
         sidebarCollapsed ? "sidebar-collapsed" : "",
       ].filter(Boolean).join(" ")}
     >
-      <HaatzaNavbar seller={seller || {}} />
+      <HaatzaNavbar seller={user || {}} />
 
       <Sidebar
         isOpen={sidebarOpen}
         onClose={handleSidebarClose}
         onToggle={handleSidebarToggle}
-        sellerName={seller?.name  || ""}
-        sellerEmail={seller?.email || sellerEmail || ""}
+        sellerName={user?.nickname || user?.name || user?.companyName || ""}
+        sellerEmail={user?.email || ""}
+        sellerPhone={user?.phone || ""}
+        sellerId={user?.sellerId || ""}
         onCollapseChange={handleCollapseChange}
         isMobile={isMobile}
       />

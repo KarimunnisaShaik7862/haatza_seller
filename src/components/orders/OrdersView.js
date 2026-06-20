@@ -49,7 +49,7 @@ const OrdersView = ({ orders = [], loading, statusType }) => {
   }, [orders, currentPage]);
 
   const handleViewDetails = (order) => {
-    navigate(`/dashboard/orders/details/${order.tableId}`);
+    navigate(`/dashboard/orders/details/${order.tableId}`, { state: { fromTab: statusType } });
   };
 
   if (loading) {
@@ -126,7 +126,9 @@ const OrdersView = ({ orders = [], loading, statusType }) => {
                     </td>
                     <td className="table-order-id">#{order.orderId}</td>
                     <td className="table-product-name" title={order.items}>
-                      {order.items}
+                      <span className="order-product-link" onClick={(e) => { e.stopPropagation(); handleViewDetails(order); }}>
+                        {order.items}
+                      </span>
                     </td>
                     <td>
                       <span className="table-meta-text">{renderProductOption(order.productOption)}</span>
