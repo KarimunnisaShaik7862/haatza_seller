@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import OtpScreen from "../../components/auth/OtpScreen/OtpScreen";
-import { generateOtp, verifyOtp, resendOtp, checkOnboardStatus } from "../../services/sellerService";
+import { generateOtp, verifyOtp, resendOtp, checkOnboardStatus, checkSeller } from "../../services/sellerService";
 import { saveUser } from "../../utils/userStore";
 import { useAuth } from "../../context/AuthContext";
 const OTP_LENGTH    = 6;
@@ -94,258 +94,96 @@ function OtpPage() {
         clearInterval(timerRef.current);
         setSuccessMsg("Verified successfully! Checking your account…");
 
-        console.log("OTP Verification Success:", verifyResponse);
-        console.log("User Data:", verifyResponse.user);
+        const response = verifyResponse;
+        console.log("OTP Verification Success:", response);
 
-        const userData = verifyResponse.user || verifyResponse.seller || (verifyResponse.message && verifyResponse.message.seller) || verifyResponse;
-        console.log("OTP Login User Data:", userData);
+        const sellerObj =
+          verifyResponse?.message?.seller ||
+          verifyResponse?.seller          ||
+          verifyResponse?.message          ||
+          verifyResponse                   ||
+          {};
 
-        // ── Extract email from verify response ─────────────────────────
+        // Extract the seller email from the OTP verification response
         const emailFromResponse =
-  verifyResponse?.message?.seller?.email ||
-  verifyResponse?.seller?.email          ||
-  verifyResponse?.email                  ||
-  verifyResponse?.data?.email            ||
-  null;
-
-const sellerObj =
-  verifyResponse?.message?.seller ||
-  verifyResponse?.seller          ||
-  verifyResponse?.message          ||
-  verifyResponse                   ||
-  {};
-
-const sellerIdFromOtp =
-  sellerObj.sellerId ||
-  sellerObj.seller_id ||
-  sellerObj._id ||
-  sellerObj.id ||
-  sellerObj.uid ||
-  sellerObj.SellerID ||
-  sellerObj.Seller_ID ||
-  verifyResponse?.message?.sellerId ||
-  verifyResponse?.message?.seller_id ||
-  verifyResponse?.sellerId ||
-  verifyResponse?.seller_id ||
-  verifyResponse?.SellerID ||
-  routeState.sellerId ||
-  "";
-
-const sellerPinCodeFromOtp =
-  verifyResponse?.message?.seller?.pincode       ||   // ← actual response key (lowercase)
-  verifyResponse?.message?.seller?.sellerPinCode ||
-  verifyResponse?.message?.seller?.pinCode       ||
-  verifyResponse?.seller?.pincode                ||
-  verifyResponse?.seller?.sellerPinCode          ||
-  verifyResponse?.seller?.pinCode                ||
-  verifyResponse?.sellerPinCode                  ||
-  verifyResponse?.pinCode                        ||
-  "";
-
-console.log("[OtpPage] Full verify response:", JSON.stringify(verifyResponse, null, 2));
-console.log("[OtpPage] Seller ID from OTP verify:", sellerIdFromOtp || "Not found in response");
-if (sellerIdFromOtp) {
-  sessionStorage.setItem("__haatza_sellerId", String(sellerIdFromOtp));
-  localStorage.setItem("__haatza_sellerId", String(sellerIdFromOtp));
-  sessionStorage.setItem("sellerId", String(sellerIdFromOtp));
-  localStorage.setItem("sellerId", String(sellerIdFromOtp));
-  console.log("[OtpPage] ✅ sellerId stored:", sellerIdFromOtp);
-}
-
-if (sellerPinCodeFromOtp && /^\d{6}$/.test(String(sellerPinCodeFromOtp).trim())) {
-  const pin = String(sellerPinCodeFromOtp).trim();
-  sessionStorage.setItem("__haatza_sellerPinCode", pin);
-  localStorage.setItem("__haatza_sellerPinCode", pin);
-  sessionStorage.setItem("sellerPinCode", pin);
-  localStorage.setItem("sellerPinCode", pin);
-  console.log("[OtpPage] ✅ sellerPinCode stored:", pin);
-} else if (sellerPinCodeFromOtp) {
-  console.warn("[OtpPage] ⚠️ sellerPinCode from OTP response is not a valid 6-digit pin:", sellerPinCodeFromOtp);
-}
-
-
+          sellerObj.email ||
+          verifyResponse?.email ||
+          verifyResponse?.data?.email ||
+          null;
 
         const emailToUse = (emailFromResponse || emailForStatus || "")
           .trim()
           .toLowerCase();
 
-        console.log("[OtpPage] Resolved email:", emailToUse,
-          "| from response:", emailFromResponse,
-          "| from routeState:", emailForStatus);
-
         if (!emailToUse) {
-          console.error("[OtpPage] ❌ No email found — cannot proceed.");
-          setError("Unable to retrieve your account email. Please sign in again.");
+          setError("Unable to retrieve your account email from the verification response.");
           setLoading(false);
           return;
         }
 
-        // ── SAVE TO BOTH STORAGES IMMEDIATELY ──────────────────────────
-        // This is the critical step that was missing for phone-based login
-        sessionStorage.setItem("pendingEmail", emailToUse);
-        localStorage.setItem("userEmail",      emailToUse);
-        console.log("[OtpPage] ✅ Email saved to storage:", emailToUse);
-
-        // ── Extract and save seller name from verify OTP response ─────────────
-        let p = verifyResponse?.message || verifyResponse?.data || verifyResponse || {};
-        if (Array.isArray(p)) {
-          p = p[0] || {};
-        }
-        const actualData = (typeof p === "string") ? (verifyResponse?.data || verifyResponse || {}) : p;
-        let extractedSeller = actualData.seller || actualData.data || actualData;
-        if (Array.isArray(extractedSeller)) {
-          extractedSeller = extractedSeller[0] || {};
-        }
-
-        const nameFromResponse =
-          extractedSeller.fullName ||
-          (extractedSeller.firstName ? (extractedSeller.firstName + (extractedSeller.lastName ? " " + extractedSeller.lastName : "")).trim() : "") ||
-          extractedSeller.name ||
-          extractedSeller.nickname ||
-          extractedSeller.sellerName ||
-          actualData.fullName ||
-          (actualData.firstName ? (actualData.firstName + (actualData.lastName ? " " + actualData.lastName : "")).trim() : "") ||
-          actualData.name ||
-          actualData.nickname ||
-          actualData.sellerName ||
-          routeState.fullName ||
+        // Do not use any hardcoded, cached, local, or invalid Seller IDs.
+        // Use ONLY the sellerId returned by the authenticated API response.
+        const sellerIdFromOtp =
+          sellerObj.sellerId ||
+          sellerObj.seller_id ||
+          sellerObj._id ||
+          sellerObj.id ||
+          sellerObj.uid ||
+          sellerObj.SellerID ||
+          sellerObj.Seller_ID ||
+          verifyResponse?.message?.sellerId ||
+          verifyResponse?.message?.seller_id ||
+          verifyResponse?.sellerId ||
+          verifyResponse?.seller_id ||
+          verifyResponse?.SellerID ||
           "";
 
-        const companyNameFromResponse =
-          extractedSeller.companyName ||
-          extractedSeller.company_name ||
-          extractedSeller.storeName ||
-          extractedSeller.store_name ||
-          extractedSeller.tradeName ||
-          extractedSeller.trade_name ||
-          extractedSeller.businessName ||
-          extractedSeller.business_name ||
-          actualData.companyName ||
-          actualData.company_name ||
-          actualData.storeName ||
-          actualData.store_name ||
-          actualData.tradeName ||
-          actualData.trade_name ||
-          actualData.businessName ||
-          actualData.business_name ||
-          "";
-
-        const phoneFromResponse =
-          extractedSeller.phone ||
-          extractedSeller.phonenumber ||
-          extractedSeller.phone_number ||
-          extractedSeller.mobile_number ||
-          extractedSeller.contact ||
-          extractedSeller.mobile ||
-          actualData.phone ||
-          actualData.phonenumber ||
-          actualData.phone_number ||
-          actualData.mobile_number ||
-          actualData.contact ||
-          actualData.mobile ||
-          "";
-
-        const logoUrlFromResponse =
-          extractedSeller.logoUrl ||
-          extractedSeller.logo ||
-          extractedSeller.profileImage ||
-          extractedSeller.profileImg ||
-          actualData.logoUrl ||
-          actualData.logo ||
-          actualData.profileImage ||
-          actualData.profileImg ||
-          "";
-
-        const storedName =
-          localStorage.getItem("sellerFullName") ||
-          sessionStorage.getItem("sellerFullName") ||
-          localStorage.getItem("__haatza_sellerName") ||
-          sessionStorage.getItem("__haatza_sellerName") ||
-          localStorage.getItem("sellerName") ||
-          sessionStorage.getItem("sellerName") ||
-          "";
-
-        const finalName = nameFromResponse || routeState.fullName || (storedName && storedName !== "Seller" ? storedName : "");
-        const finalCompanyName = companyNameFromResponse || (finalName !== "Seller" ? finalName : "") || "";
-        const finalPhone = phone || phoneFromResponse || "";
-
-        if (finalName && finalName !== "Seller") {
-          localStorage.setItem("sellerName", finalName);
-          sessionStorage.setItem("sellerName", finalName);
+        // Save new user data and login
+        const sellerData = verifyResponse.userData || {};
+        // Overwrite status, email, phone, and sellerId with the authenticated response fields
+        sellerData.sellerId = sellerIdFromOtp;
+        sellerData.email = emailToUse;
+        if (sellerObj.phone || sellerObj.phonenumber) {
+          sellerData.phone = sellerObj.phone || sellerObj.phonenumber;
+        }
+        if (sellerObj.status) {
+          sellerData.status = sellerObj.status;
         }
 
-        if (finalCompanyName && finalCompanyName !== "Seller") {
-          localStorage.setItem("companyName", finalCompanyName);
-          sessionStorage.setItem("companyName", finalCompanyName);
-        }
-
-        if (finalPhone) {
-          localStorage.setItem("sellerPhone", finalPhone);
-          sessionStorage.setItem("sellerPhone", finalPhone);
-        }
-
-        const mappedUserData = {
-          email: emailToUse,
-          phone: finalPhone,
-          sellerId: sellerIdFromOtp,
-          companyName: finalCompanyName,
-          GSTIN: verifyResponse.GSTIN || verifyResponse.gstin || (verifyResponse.message?.seller?.gstin) || "",
-          address: verifyResponse.address || (verifyResponse.message?.seller?.address) || "",
-          pincode: sellerPinCodeFromOtp,
-          nickname: verifyResponse.nickname || "",
-          storageType: verifyResponse.storageType || "Seller",
-          logoUrl: logoUrlFromResponse || "",
-        };
-
-        localStorage.setItem("sellerData", JSON.stringify(mappedUserData));
-        console.log("OTP Login User Data:", mappedUserData);
-
+        // Store new data and invoke context login (which clears stale keys first)
+        localStorage.setItem("sellerData", JSON.stringify(sellerData));
         login({
-          name: finalName,
-          companyName: finalCompanyName,
+          name: sellerData.fullName || sellerObj.fullName || sellerObj.name || sellerObj.nickname || "",
+          companyName: sellerData.companyName || sellerObj.companyName || "",
           email: emailToUse,
-          phone: finalPhone,
-          logoUrl: logoUrlFromResponse || "",
+          phone: sellerData.phone || phone,
+          logoUrl: sellerData.logoUrl || sellerObj.logoUrl || "",
           sellerId: sellerIdFromOtp,
-          gstin: mappedUserData.GSTIN,
-          address: mappedUserData.address,
-          pincode: sellerPinCodeFromOtp,
-          nickname: mappedUserData.nickname,
-          storageType: mappedUserData.storageType,
+          gstin: sellerData.GSTIN || sellerData.gstin || sellerObj.GSTIN || sellerObj.gstin || "",
+          address: sellerData.address || sellerObj.address || "",
+          pincode: sellerData.pincode || sellerObj.pincode || "",
+          nickname: sellerData.nickname || sellerObj.nickname || "",
+          storageType: sellerData.storageType || sellerObj.storageType || "Seller",
+          status: sellerData.status || sellerObj.status || "",
         });
-        console.log("[OtpPage] ✅ sellerName and user context initialized:", finalName);
 
-try {
-  console.log("[OtpPage] Checking onboard status for:", emailToUse);
+        try {
+          console.log("[OtpPage] Checking onboard status for:", emailToUse);
           const isOnboarded = await checkOnboardStatus(emailToUse);
 
           if (isOnboarded) {
-            // ✅ Navigate to dashboard and pass email in state
             navigate("/dashboard", {
-              state: {
-                email: emailToUse,   // ← always pass email in state
-                phone,
-                ...routeState,
-              },
+              state: { email: emailToUse },
             });
           } else {
             navigate("/onboarding", {
-              state: {
-                email: emailToUse,   // ← always pass email in state
-                phone,
-                ...routeState,
-              },
+              state: { email: emailToUse },
             });
           }
         } catch (statusErr) {
           console.error("[OtpPage] Onboard status check failed:", statusErr);
-          // Email is already saved — navigate anyway
-          navigate("/dashboard", {
-            state: {
-              email: emailToUse,
-              phone,
-              ...routeState,
-            },
+          navigate("/onboarding", {
+            state: { email: emailToUse },
           });
         }
       })

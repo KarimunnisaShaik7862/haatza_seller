@@ -21,8 +21,9 @@ import "./DashboardPage.css";
 const DashboardPage = () => {
   const { user } = useAuth();
   const sellerId = getSellerId();
-  const sellerEmail = localStorage.getItem("userEmail") || sessionStorage.getItem("userEmail") || "";
+  const sellerEmail = user?.email || localStorage.getItem("userEmail") || sessionStorage.getItem("userEmail") || "";
   const navigate = useNavigate();
+  console.log("Dashboard Seller Data:", user);
 
   // State for data
   const [profile, setProfile] = useState(null);
@@ -53,7 +54,7 @@ const DashboardPage = () => {
 
     try {
       const results = await Promise.allSettled([
-        sellerService.getUserProfile(sellerEmail),
+        sellerService.getUserProfile(sellerEmail, sellerId),
         sellerService.getSellerNewOrders(sellerId),
         sellerService.getSellerConfirmedOrdersCount(sellerId),
         sellerService.checkWalletBalance(sellerId),
@@ -182,28 +183,19 @@ const DashboardPage = () => {
 
   const sellerName =
     user?.nickname ||
+    user?.firstName ||
     user?.name ||
+    user?.fullName ||
     user?.companyName ||
-    profile?.nickname ||
-    profile?.name ||
-    profile?.companyName ||
-    profile?.company_name ||
-    profile?.fullName ||
-    (profile?.firstName ? (profile.firstName + (profile.lastName ? " " + profile.lastName : "")).trim() : "") ||
-    profile?.storeName ||
-    profile?.store_name ||
-    profile?.tradeName ||
-    profile?.trade_name ||
-    profile?.businessName ||
-    profile?.business_name ||
-    profile?.sellerName ||
     "";
+
+  const firstName = sellerName ? sellerName.trim().split(/\s+/)[0] : "";
 
   return (
     <div className="dashboard-page-container">
       <div className="dashboard-header-section">
         <div>
-          <h1 className="dashboard-greeting">Welcome back, {sellerName}! ✨</h1>
+          <h1 className="dashboard-greeting">Welcome back{firstName ? `, ${firstName}` : ""}! ✨</h1>
           <p className="dashboard-subtitle">Here is what is happening with your store today.</p>
         </div>
         <button className="btn-refresh-dashboard" onClick={loadDashboardData} title="Refresh dashboard data">

@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
         if (sd) {
           return {
             ...sd,
-            name: sd.companyName || sd.name || "",
+            name: sd.nickname || sd.fullName || sd.name || sd.companyName || "",
             companyName: sd.companyName || sd.name || "",
             email: sd.email || "",
             phone: sd.phone || "",
@@ -144,8 +144,79 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = useCallback((userData) => {
-    updateUser(userData);
-  }, [updateUser]);
+    // Construct new clean user object from authenticated response only
+    const cleanUser = {
+      name: userData.nickname || userData.fullName || userData.name || userData.companyName || "",
+      companyName: userData.companyName || userData.name || "",
+      email: userData.email || "",
+      phone: userData.phone || "",
+      logoUrl: userData.logoUrl || "",
+      sellerId: userData.sellerId || "",
+      gstin: userData.GSTIN || userData.gstin || "",
+      GSTIN: userData.GSTIN || userData.gstin || "",
+      address: userData.address || "",
+      pincode: userData.pincode || "",
+      nickname: userData.nickname || "",
+      storageType: userData.storageType || "",
+      status: userData.status || "",
+    };
+
+    const KEY = "haatza_user";
+    
+    // Clear all legacy storage keys first to prevent stale session data leaks
+    const legacyKeys = [
+      "sellerName", "companyName", "userEmail", "sellerPhone", "sellerLogoUrl",
+      "haatzaSeller", "sellerId", "__haatza_sellerId", "__haatza_sellerEmail",
+      "__haatza_sellerPhone", "__haatza_sellerName", "sellerPinCode", "__haatza_sellerPinCode",
+      "pendingEmail"
+    ];
+    legacyKeys.forEach(k => {
+      sessionStorage.removeItem(k);
+      localStorage.removeItem(k);
+    });
+
+    // Write only the new keys returned by the authenticated API response
+    sessionStorage.setItem(KEY, JSON.stringify(cleanUser));
+    localStorage.setItem(KEY, JSON.stringify(cleanUser));
+
+    if (cleanUser.name && cleanUser.name !== "Seller") {
+      sessionStorage.setItem("sellerName", cleanUser.name);
+      localStorage.setItem("sellerName", cleanUser.name);
+    }
+    if (cleanUser.companyName && cleanUser.companyName !== "Seller") {
+      sessionStorage.setItem("companyName", cleanUser.companyName);
+      localStorage.setItem("companyName", cleanUser.companyName);
+    }
+    if (cleanUser.email) {
+      sessionStorage.setItem("userEmail", cleanUser.email);
+      localStorage.setItem("userEmail", cleanUser.email);
+      sessionStorage.setItem("pendingEmail", cleanUser.email);
+      localStorage.setItem("pendingEmail", cleanUser.email);
+    }
+    if (cleanUser.phone) {
+      sessionStorage.setItem("sellerPhone", cleanUser.phone);
+      localStorage.setItem("sellerPhone", cleanUser.phone);
+    }
+    if (cleanUser.logoUrl) {
+      sessionStorage.setItem("sellerLogoUrl", cleanUser.logoUrl);
+      localStorage.setItem("sellerLogoUrl", cleanUser.logoUrl);
+    }
+    if (cleanUser.sellerId) {
+      sessionStorage.setItem("sellerId", cleanUser.sellerId);
+      localStorage.setItem("sellerId", cleanUser.sellerId);
+      sessionStorage.setItem("__haatza_sellerId", cleanUser.sellerId);
+      localStorage.setItem("__haatza_sellerId", cleanUser.sellerId);
+    }
+    if (cleanUser.pincode) {
+      sessionStorage.setItem("sellerPinCode", cleanUser.pincode);
+      localStorage.setItem("sellerPinCode", cleanUser.pincode);
+      sessionStorage.setItem("__haatza_sellerPinCode", cleanUser.pincode);
+      localStorage.setItem("__haatza_sellerPinCode", cleanUser.pincode);
+    }
+
+    localStorage.setItem("sellerData", JSON.stringify(userData));
+    setUser(cleanUser);
+  }, []);
 
   const logout = useCallback(() => {
     setUser(null);

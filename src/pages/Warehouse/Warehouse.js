@@ -1,5 +1,5 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   CheckCircle2,
   TrendingUp,
@@ -14,6 +14,7 @@ import {
   BarChart2,
 } from "lucide-react";
 import "./Warehouse.css";
+import { sellerService } from "../../services/sellerService";
 
 /* ─── Content (unchanged) ────────────────────────────────────── */
 const STEPS = [
@@ -117,6 +118,113 @@ const ONE_TIME_FEES = [
 /* ─── Page ───────────────────────────────────────────────────── */
 function WarehouseOnboarding() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Modal & Callback states
+  const showCallbackModal = location.pathname.endsWith("/callback");
+  const [isEditing, setIsEditing] = useState(false);
+  const [callbackNumber, setCallbackNumber] = useState("");
+  const [sellerPhone, setSellerPhone] = useState("");
+  const [sellerEmail, setSellerEmail] = useState("");
+  const [sellerId, setSellerId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  // Initialize and load seller profile info
+  useEffect(() => {
+    const cachedPhone = sellerService.getCachedSellerPhone() || "";
+    const cachedEmail = sellerService.getCachedSellerEmail() || "";
+    const cachedId = sellerService.getCachedSellerId() || "";
+
+    setSellerPhone(cachedPhone);
+    setSellerEmail(cachedEmail);
+    setSellerId(cachedId);
+    setCallbackNumber(cachedPhone);
+    setIsEditing(false);
+
+    const loadProfile = async () => {
+      try {
+        if (!cachedEmail) return;
+        const res = await sellerService.getUserProfile(cachedEmail, cachedId);
+        const p = res?.message || res?.data || res || {};
+        let onboardingData = p.seller || p.data || p;
+        if (Array.isArray(onboardingData)) {
+          onboardingData = onboardingData[0] || {};
+        }
+        if (onboardingData && Object.keys(onboardingData).length > 0) {
+          const dbPhone = onboardingData.phone || onboardingData.phone_number || onboardingData.phoneNumber || "";
+          const dbEmail = onboardingData.email || "";
+          const dbSellerId = onboardingData.sellerId || onboardingData.seller_id || "";
+          if (dbPhone) {
+            setSellerPhone(dbPhone);
+            setCallbackNumber(dbPhone);
+          }
+          if (dbEmail) setSellerEmail(dbEmail);
+          if (dbSellerId) setSellerId(dbSellerId);
+        }
+      } catch (err) {
+        console.warn("[Warehouse] Failed to load seller profile for callback phone number:", err);
+      }
+    };
+
+    if (showCallbackModal) {
+      loadProfile();
+    }
+  }, [location.pathname, showCallbackModal]);
+
+  const handleClose = () => {
+    if (location.pathname.startsWith("/dashboard")) {
+      navigate("/dashboard/warehouse");
+    } else {
+      navigate("/warehouse");
+    }
+  };
+
+  const handleCallbackSubmit = async () => {
+    const activePhone = callbackNumber ? callbackNumber.trim() : "";
+    if (!activePhone) {
+      alert("Please enter a valid phone number.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const payload = {
+        sellerId: sellerId || "",
+        email: sellerEmail || "",
+        phone: activePhone,
+        phoneNumber: activePhone,
+        callbackNumber: activePhone,
+        relatedEmail: "",
+        gstin: "",
+        warehouseLocation: "",
+        enrollLocation: "",
+        gstVerification: false,
+        kamRegistration: false,
+        dsc: false,
+        dscVerification: false,
+        digitalSignature: false,
+        address: "",
+        warehouseName: "",
+        requestType: "Request Call Back"
+      };
+
+      // Before API submission: log the payload exactly as specified
+      console.log("Warehouse Request Payload:", payload);
+
+      const response = await sellerService.submitWarehouseRequest(payload);
+      console.log("[Warehouse] Callback Request Response:", response);
+      alert("Callback request submitted successfully!");
+      handleClose();
+    } catch (err) {
+      console.error("[Warehouse] Callback request failed:", err);
+      // Log response error details for better debugging
+      if (err.response?.data) {
+        console.error("[Warehouse] Backend Error Details:", err.response.data);
+      }
+      alert(err.response?.data?.message || err?.message || "Failed to send callback request. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="hwo-page">
@@ -124,7 +232,6 @@ function WarehouseOnboarding() {
       <section className="hwo-hero">
         <div className="hwo-container hwo-hero__topline">
           <span className="hwo-tracking">HAATZA · FULFILLMENT NETWORK</span>
-          <div className="hwo-barcode" aria-hidden="true" />
         </div>
 
         <div className="hwo-container hwo-hero__grid">
@@ -308,11 +415,63 @@ function WarehouseOnboarding() {
             </button>
           </div>
         </div>
-        <div className="hwo-container hwo-footer-manifest">
-          <span>MANIFEST NO. HWZ-2026-WH</span>
-          <div className="hwo-barcode hwo-barcode--small" aria-hidden="true" />
-        </div>
       </section>
+
+      {/* ── Callback Modal Popup ── */}
+      {showCallbackModal && (
+        <div className="hwo-modal-overlay" onClick={handleClose}>
+          <div className="hwo-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="hwo-modal-handle" />
+            <h3 className="hwo-modal-title">Request Callback</h3>
+            
+            {!isEditing ? (
+              <div className="hwo-modal-body">
+                <p className="hwo-modal-text">
+                  Are you sure you want to send a callback request to <span className="hwo-phone-highlight">{sellerPhone}</span>?
+                </p>
+                <button 
+                  type="button" 
+                  className="hwo-change-num-btn" 
+                  onClick={() => setIsEditing(true)}
+                >
+                  Change Number
+                </button>
+              </div>
+            ) : (
+              <div className="hwo-modal-body">
+                <div className="hwo-input-container">
+                  <input
+                    type="tel"
+                    className="hwo-modal-input"
+                    value={callbackNumber}
+                    onChange={(e) => setCallbackNumber(e.target.value)}
+                    placeholder="Enter callback number"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="hwo-modal-actions">
+              <button 
+                type="button" 
+                className="hwo-btn hwo-btn--primary hwo-modal-submit" 
+                onClick={handleCallbackSubmit}
+                disabled={submitting}
+              >
+                {submitting ? "Submitting..." : "Submit"}
+              </button>
+              <button 
+                type="button" 
+                className="hwo-btn hwo-btn--outline hwo-modal-cancel" 
+                onClick={handleClose}
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

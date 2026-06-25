@@ -113,11 +113,7 @@ function SignInPage() {
         }
       } else {
         // ❌ Not registered → show inline error
-        const errorMsg =
-          result.contactType === "email"
-            ? "This email is not registered. Please sign up first."
-            : "This phone number is not registered. Please sign up first.";
-        setError(errorMsg);
+        setError("Account not found. Please complete the signup process first.");
       }
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
@@ -157,32 +153,31 @@ function SignInPage() {
       }
 
       console.log("Login API Response:", response);
+      console.log(
+        "Seller Name:",
+        response.userData.nickname ||
+        response.userData.firstName ||
+        response.userData.companyName
+      );
       console.log("Complete Seller Data:", response.userData);
-      console.log("Seller ID:", response.userData.sellerId);
-      console.log("Company Name:", response.userData.companyName);
-      console.log("Email:", response.userData.email);
-      console.log("Phone:", response.userData.phone);
-      console.log("GSTIN:", response.userData.GSTIN);
-      console.log("Address:", response.userData.address);
-      console.log("Pincode:", response.userData.pincode);
-
-      const loggedUser = response.userData || {};
-      if (!loggedUser.nickname && verifiedContact?.fullName) {
-        loggedUser.nickname = verifiedContact.fullName;
-      }
 
       // Store complete userData object in localStorage
-      localStorage.setItem("sellerData", JSON.stringify(loggedUser));
+      localStorage.setItem("sellerData", JSON.stringify(response.userData));
 
-      const sellerName = loggedUser.nickname || verifiedContact?.fullName || loggedUser.companyName || "";
-      const companyName = loggedUser.companyName || "";
-      const phone = loggedUser.phone || "";
-      const sellerId = loggedUser.sellerId || "";
-      const pincode = loggedUser.pincode || "";
+      const sellerData = response.userData;
+      console.log("Logged In Seller Data:", sellerData);
+
+      const sellerName = sellerData.nickname || sellerData.companyName || "";
+      const companyName = sellerData.companyName || "";
+      const phone = sellerData.phone || "";
+      const sellerId = sellerData.sellerId || "";
+      const pincode = sellerData.pincode || "";
+
+      const authenticatedEmail = (sellerData.email || emailForStatus || "").toLowerCase().trim();
 
       // ── Save to BOTH storages before navigating ──────────────────────────
-      sessionStorage.setItem("pendingEmail", emailForStatus);
-      localStorage.setItem("userEmail",      emailForStatus);
+      sessionStorage.setItem("pendingEmail", authenticatedEmail);
+      localStorage.setItem("userEmail",      authenticatedEmail);
       
       if (sellerName) {
         localStorage.setItem("sellerName", sellerName);
@@ -210,34 +205,34 @@ function SignInPage() {
       login({
         name: sellerName,
         companyName: companyName,
-        email: emailForStatus,
+        email: authenticatedEmail,
         phone: phone,
-        logoUrl: loggedUser.logoUrl || "",
+        logoUrl: sellerData.logoUrl || "",
         sellerId: sellerId,
-        gstin: loggedUser.GSTIN || "",
-        address: loggedUser.address || "",
+        gstin: sellerData.GSTIN || "",
+        address: sellerData.address || "",
         pincode: pincode,
-        nickname: loggedUser.nickname || "",
-        storageType: loggedUser.storageType || "",
+        nickname: sellerData.nickname || "",
+        storageType: sellerData.storageType || "",
+        status: sellerData.status || "",
       });
 
-      const isOnboarded = await checkOnboardStatus(emailForStatus);
+      const isOnboarded = await checkOnboardStatus(authenticatedEmail);
 
       if (isOnboarded) {
         navigate("/dashboard", {
-          state: { email: emailForStatus },
+          state: { email: authenticatedEmail },
         });
       } else {
         navigate("/onboarding", {
           state: {
             ...verifiedContact,
-            email: emailForStatus,
+            email: authenticatedEmail,
           },
         });
       }
     } catch (error) {
-      console.error("Login Error:", error);
-      const errorMsg = error.response?.data?.message || error.message || "Invalid Email or Password";
+      const errorMsg = error.message || "Password is incorrect, try again.";
       setError(errorMsg);
     } finally {
       setLoading(false);

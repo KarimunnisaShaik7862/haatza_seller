@@ -216,9 +216,6 @@ const OrdersView = ({ orders = [], loading, statusType }) => {
                 <p className="mobile-order-status">
                   Status: <span>{order.status}</span>
                 </p>
-                <p className="mobile-order-ship">
-                  Last Date To Ship: {formatDate(order.estimatedDelivery || order.createdDate)}
-                </p>
                 {order.productOption && (
                   <p className="mobile-order-size">Size: {renderProductOption(order.productOption)}</p>
                 )}

@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import "./SignInForm.css";
 import Logo from "../../../assets/Images/haatzaSellerlogo.png";
 import LoginVideo from "../../../assets/videos/SignUpIn.mp4";
-
+import { Link } from "react-router-dom";
 
 /**
  * SignInForm — pure UI component
@@ -255,9 +255,9 @@ function SignInForm({
           "p",
           { className: "terms-text" },
           "By continuing, you agree to our ",
-          React.createElement("a", { href: "#", className: "terms-link" }, "Terms of Use"),
+          React.createElement(Link, { to: "/terms", className: "terms-link" }, "Terms of Use"),
           " and ",
-          React.createElement("a", { href: "#", className: "terms-link" }, "Privacy Policy"),
+          React.createElement(Link, { to: "/privacy", className: "terms-link" }, "Privacy Policy"),
           "."
         ),
 

@@ -33,7 +33,7 @@ export default function CustomerInsights({ customer }) {
 
           {/* Recharts Bar Chart */}
           <div className="pi-ratings-chart-wrapper" style={{ flex: 1, height: 160 }}>
-            <ResponsiveContainer>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart
                 data={distribution}
                 layout="vertical"

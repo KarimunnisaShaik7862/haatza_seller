@@ -67,7 +67,6 @@ const BrandingProductTable = ({
               <th className="ib-col-image">Product</th>
               <th className="ib-col-name">Name</th>
               <th className="ib-col-price">Price</th>
-              <th className="ib-col-stock">Inventory</th>
               <th className="ib-col-status">Status</th>
               <th className="ib-col-actions">Actions</th>
             </tr>
@@ -117,11 +116,6 @@ const BrandingProductTable = ({
                   </td>
                   <td className="ib-col-price">
                     <span className="ib-price-value">₹{finalPrice.toLocaleString()}</span>
-                  </td>
-                  <td className="ib-col-stock">
-                    <span className={`ib-stock-value ${stock < 20 ? "low-stock" : ""}`}>
-                      {stock.toLocaleString()}
-                    </span>
                   </td>
                   <td className="ib-col-status">
                     <span className={`ib-status-badge ${isPromoted ? "enabled" : "disabled"}`}>

@@ -8,6 +8,11 @@ const ArrowLeft = () => (
     <polyline points="15 18 9 12 15 6" />
   </svg>
 );
+const CloseX = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
 const Lock = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -92,13 +97,23 @@ const Share2 = () => (
 function PrivacyPolicyPage() {
   const navigate = useNavigate();
 
+  // ─── Smart close: go back in history if possible, else fall back ───────
+  // Works whether opened from /signin, /signup, or /dashboard/settings.
+  const handleClose = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/signin");
+    }
+  };
+
   return (
     <div className="pp-root">
 
-      {/* Back */}
+      {/* Close */}
       <div className="pp-topbar">
-        <button className="pp-back-btn" onClick={() => navigate("/dashboard/settings")}>
-          <ArrowLeft /><span>Back to Settings</span>
+        <button className="pp-back-btn" onClick={handleClose}>
+          <CloseX /><span>Close</span>
         </button>
       </div>
 
@@ -106,15 +121,10 @@ function PrivacyPolicyPage() {
       <div className="pp-hero">
         <div className="pp-hero-inner">
           <div className="pp-hero-badge"><Lock /><span>Data Protected</span></div>
-          <h1 className="pp-hero-title">Privacy Policy</h1>
+          <h1 className="pp-hero-title">Haatza Seller Privacy Policy</h1>
           <p className="pp-hero-subtitle">
             Learn how Haatza Seller collects, uses, stores, and protects your information as a seller on our platform.
           </p>
-          <div className="pp-hero-meta">
-            <span className="pp-meta-chip">📅 Last Updated: June 1, 2025</span>
-            <span className="pp-meta-chip pp-meta-green">✅ IT Act 2000 Compliant</span>
-            <span className="pp-meta-chip pp-meta-blue">🛡 Consumer Protection Rules 2020</span>
-          </div>
         </div>
         <div className="pp-hero-art">
           <svg viewBox="0 0 200 180" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -142,34 +152,27 @@ function PrivacyPolicyPage() {
           <div className="pp-section-label">01</div>
           <h2 className="pp-section-title">Introduction &amp; Scope</h2>
           <p className="pp-para">
-            Haatza Seller ("we", "us", "our") respects your privacy and is committed to protecting your personal data. This policy applies to all personal data processed via our e-commerce platform and governs how we collect, use, disclose, and safeguard information about sellers and their customers.
+            Haatza Seller ("we," "us," "our") respects your privacy and is committed to protecting your privacy. This policy applies to all personal data processed via our e-commerce platform, in compliance with the Information Technology Act, 2000, the IT (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011, and relevant e-commerce statutes like the Consumer Protection (E-Commerce) Rules, 2020.
           </p>
-          <p className="pp-para">This policy is in compliance with:</p>
-          <div className="pp-chips">
-            <span className="pp-chip pp-chip-blue"><CheckCircle /> Information Technology Act, 2000</span>
-            <span className="pp-chip pp-chip-blue"><CheckCircle /> IT (SPDI) Rules, 2011</span>
-            <span className="pp-chip pp-chip-blue"><CheckCircle /> Consumer Protection (E-Commerce) Rules, 2020</span>
-          </div>
         </section>
 
         {/* 2 */}
         <section className="pp-section">
           <div className="pp-section-label">02</div>
           <h2 className="pp-section-title">Information We Collect</h2>
-          <p className="pp-para">We collect only the information necessary to operate and improve our services. This falls into two categories:</p>
           <div className="pp-two-col">
             <div className="pp-card pp-card-blue">
               <div className="pp-card-head"><Users /><strong>Personal Data</strong></div>
               <ul className="pp-list">
-                {["Name","Email Address","Phone Number","Shipping Address","Billing Address","Payment Details"].map(i => (
+                {["Name, email, phone number, shipping/billing address, payment details."].map(i => (
                   <li key={i}><CheckCircle />{i}</li>
                 ))}
               </ul>
             </div>
             <div className="pp-card pp-card-orange">
-              <div className="pp-card-head"><Key /><strong>Sensitive Data (If Applicable)</strong></div>
+              <div className="pp-card-head"><Key /><strong>Sensitive Data (if applicable)</strong></div>
               <ul className="pp-list">
-                {["Payment Card Information","Government ID Numbers","Account Passwords"].map(i => (
+                {["Payment card details, government ID numbers, passwords."].map(i => (
                   <li key={i}><AlertTriangle />{i}</li>
                 ))}
               </ul>
@@ -180,29 +183,25 @@ function PrivacyPolicyPage() {
         {/* 3 */}
         <section className="pp-section">
           <div className="pp-section-label">03</div>
-          <h2 className="pp-section-title">Purpose &amp; Legal Basis of Collection</h2>
-          <p className="pp-para">We collect and process your data strictly for the following purposes:</p>
+          <h2 className="pp-section-title">Purpose and Legal Basis of Collection</h2>
+          <p className="pp-para">We collect data to:</p>
           <div className="pp-timeline">
             {[
-              { n:"1", label:"Process Orders",        desc:"Manage the complete order lifecycle on your behalf, from placement to fulfilment." },
-              { n:"2", label:"Process Payments",      desc:"Securely handle payment authorization, settlement, and refunds." },
-              { n:"3", label:"Manage Deliveries",     desc:"Coordinate with logistics partners to ensure timely shipment and tracking." },
-              { n:"4", label:"Customer Support",      desc:"Resolve seller disputes, respond to queries, and provide after-sale assistance." },
-              { n:"5", label:"Important Updates",     desc:"Communicate platform changes, policy updates, and promotional information." },
-              { n:"6", label:"Legal Compliance",      desc:"Fulfil obligations under Indian law and applicable international regulations." },
+              { n:"1", label:"Process orders, payments, and deliveries" },
+              { n:"2", label:"Communicate updates and support" },
+              { n:"3", label:"Comply with legal obligations" },
             ].map(p => (
               <div className="pp-tl-item" key={p.n}>
                 <div className="pp-tl-dot">{p.n}</div>
                 <div className="pp-tl-body">
                   <strong>{p.label}</strong>
-                  <span>{p.desc}</span>
                 </div>
               </div>
             ))}
           </div>
           <div className="pp-notice">
             <AlertTriangle />
-            <p>Under SPDI Rules, we obtain informed and specific consent before collection. Although the DPDP Act, 2023 is not yet fully in force, we are actively preparing for full compliance.</p>
+            <p>Under SPDI Rules, we obtain your consent before collection and ensure it is informed and specific. Although the DPDP Act, 2023 is not yet in force, we anticipate its eventual enforcement and will adapt accordingly.</p>
           </div>
         </section>
 
@@ -210,77 +209,36 @@ function PrivacyPolicyPage() {
         <section className="pp-section">
           <div className="pp-section-label">04</div>
           <h2 className="pp-section-title">Consent &amp; Children's Data</h2>
-          <p className="pp-para">All data collection on Haatza Seller requires clear and affirmative consent. We do not rely on pre-ticked boxes or inferred consent.</p>
-          <div className="pp-highlight-card">
-            <div className="pp-highlight-icon"><UserCheck /></div>
-            <div>
-              <strong>Minors (Under 18 Years)</strong>
-              <p>For users under the age of 18, we obtain verifiable parental or guardian consent prior to data collection, in accordance with applicable DPDP guidelines whenever enforced.</p>
-            </div>
-          </div>
+          <p className="pp-para">Users must provide clear, affirmative consent for data collection. For minors (under 18), parental or guardian consent will be obtained in line with DPDP guidelines when activated.</p>
         </section>
 
         {/* 5 */}
         <section className="pp-section">
           <div className="pp-section-label">05</div>
           <h2 className="pp-section-title">Data Minimisation &amp; Retention</h2>
-          <p className="pp-para">We collect only essential data and retain it only for as long as required to fulfil its stated purpose. Once the retention period expires, data is securely and permanently deleted.</p>
-          <div className="pp-lifecycle">
-            {[
-              { icon:"📥", label:"Collection",  desc:"Minimal, purpose-bound data collected with explicit consent." },
-              { icon:"⚙️", label:"Processing",  desc:"Used solely for service delivery and legal compliance." },
-              { icon:"🔐", label:"Storage",     desc:"Encrypted and secured for the retention period only." },
-              { icon:"🗑",  label:"Deletion",   desc:"Securely erased once retention limits are reached." },
-            ].map(l => (
-              <div className="pp-lc-step" key={l.label}>
-                <span className="pp-lc-icon">{l.icon}</span>
-                <strong>{l.label}</strong>
-                <p>{l.desc}</p>
-              </div>
-            ))}
-          </div>
+          <p className="pp-para">We collect only essential data and retain it no longer than needed for our services, legal obligations, or dispute resolution. Upon reaching retention limits, data is securely deleted. Reflection on proposed DPDP retention rules (e.g., 3 years for high-volume platforms) is ongoing.</p>
         </section>
 
         {/* 6 */}
         <section className="pp-section">
           <div className="pp-section-label">06</div>
           <h2 className="pp-section-title">Security Measures</h2>
-          <p className="pp-para">We implement industry-standard technical and organisational safeguards to protect your data against unauthorised access, disclosure, or destruction.</p>
-          <div className="pp-grid-3">
-            {[
-              { icon:<Key />,        title:"Encryption",       desc:"Data encrypted in transit and at rest using AES-256 standards." },
-              { icon:<Lock />,       title:"Access Controls",  desc:"Role-based access with multi-factor authentication enforced." },
-              { icon:<Database />,   title:"Data Integrity",   desc:"Regular audits ensure accuracy and completeness of all records." },
-              { icon:<ShieldCheck />,title:"Confidentiality",  desc:"Strict internal data handling policies across all teams." },
-              { icon:<Cpu />,        title:"Infrastructure",   desc:"Hosted on certified, ISO-compliant cloud infrastructure." },
-              { icon:<Eye />,        title:"Monitoring",       desc:"24/7 automated threat detection and anomaly monitoring." },
-            ].map(s => (
-              <div className="pp-sec-card" key={s.title}>
-                <div className="pp-sec-icon">{s.icon}</div>
-                <strong>{s.title}</strong>
-                <p>{s.desc}</p>
-              </div>
-            ))}
-          </div>
+          <p className="pp-para">We implement reasonable technical and organizational safeguards (e.g., encryption, access controls) to protect data integrity and confidentiality.</p>
         </section>
 
         {/* 7 */}
         <section className="pp-section">
           <div className="pp-section-label">07</div>
           <h2 className="pp-section-title">Data Disclosure</h2>
-          <p className="pp-para">We share your personal data only when strictly necessary and exclusively with the following trusted categories of recipients:</p>
-          <div className="pp-grid-5">
+          <p className="pp-para">We only share your personal data with:</p>
+          <div className="pp-grid-5" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
             {[
-              { emoji:"⚙️", label:"Service Providers",  desc:"Platform, hosting, and SaaS vendors under data processing agreements." },
-              { emoji:"💳", label:"Payment Processors",  desc:"Regulated payment gateways handling authorization and settlement." },
-              { emoji:"🚚", label:"Logistics Partners",  desc:"Courier and fulfilment networks for order delivery." },
-              { emoji:"💻", label:"Technology Vendors",  desc:"Analytics and infrastructure partners bound by NDA." },
-              { emoji:"⚖",  label:"Legal Authorities",  desc:"Disclosed only when required by applicable law or court order." },
+              { emoji:"💳", label:"Payment processors, logistics partners, or other third-party service providers under contracts that mandate data protection." },
+              { emoji:"⚖", label:"Authorities when required by law." },
             ].map(d => (
               <div className="pp-disc-card" key={d.label}>
                 <span className="pp-disc-emoji">{d.emoji}</span>
-                <strong>{d.label}</strong>
-                <p>{d.desc}</p>
+                <p>{d.label}</p>
               </div>
             ))}
           </div>
@@ -290,17 +248,10 @@ function PrivacyPolicyPage() {
         <section className="pp-section">
           <div className="pp-section-label">08</div>
           <h2 className="pp-section-title">Cross-border Transfers</h2>
-          <p className="pp-para">Any transfer of personal data outside India is conducted under appropriate contractual safeguards, ensuring the destination provides an adequate level of data protection equivalent to Indian standards.</p>
           <div className="pp-globe-card">
             <div className="pp-globe-icon"><Globe /></div>
             <div className="pp-globe-body">
-              <strong>DPDP-Ready International Transfers</strong>
-              <p>We are anticipating and preparing for cross-border transfer guidelines under the DPDP Act, 2023, and will update our practices accordingly once the Act comes fully into force.</p>
-              <div className="pp-chips" style={{marginTop:"12px"}}>
-                <span className="pp-chip pp-chip-blue">Contractual Safeguards</span>
-                <span className="pp-chip pp-chip-blue">Adequate Protection Standards</span>
-                <span className="pp-chip pp-chip-blue">DPDP-Ready Transfers</span>
-              </div>
+              <p>Any data transfers outside India will be conducted with safeguards and contractual controls, in anticipation of DPDP cross-border guidelines.</p>
             </div>
           </div>
         </section>
@@ -309,9 +260,8 @@ function PrivacyPolicyPage() {
         <section className="pp-section">
           <div className="pp-section-label">09</div>
           <h2 className="pp-section-title">Grievance Redressal</h2>
-          <p className="pp-para">In accordance with the Consumer Protection (E-Commerce) Rules, 2020, we have appointed a Grievance Officer to address all data and privacy-related complaints.</p>
+          <p className="pp-para">In accordance with Consumer Protection (E-Commerce) Rules, 2020, we have appointed a Grievance Officer. You can reach them at:</p>
           <div className="pp-grievance-card">
-            <div className="pp-grievance-tag">Grievance Officer</div>
             <div className="pp-grievance-rows">
               <div className="pp-grievance-row">
                 <div className="pp-grievance-icon"><UserCheck /></div>
@@ -322,29 +272,15 @@ function PrivacyPolicyPage() {
                 <div><label>Email</label><a href="mailto:grievance@haatza.com">grievance@haatza.com</a></div>
               </div>
             </div>
-            <p className="pp-grievance-note">We endeavour to resolve all complaints within timelines prescribed by applicable laws.</p>
+            <p className="pp-grievance-note">We endeavor to resolve complaints within timeframes set by applicable rules.</p>
           </div>
         </section>
 
         {/* 10 */}
         <section className="pp-section">
           <div className="pp-section-label">10</div>
-          <h2 className="pp-section-title">No Dark Patterns</h2>
-          <p className="pp-para">Haatza strictly follows guidelines issued by the Central Consumer Protection Authority (CCPA). We are committed to transparent, fair, and honest user experiences across the platform.</p>
-          <div className="pp-grid-4">
-            {[
-              { item:"False Urgency",         desc:"We never create artificial scarcity or countdown pressure to manipulate decisions." },
-              { item:"Hidden Charges",        desc:"All fees, commissions, and costs are disclosed clearly before any transaction." },
-              { item:"Forced Actions",        desc:"No compulsory subscriptions, unwanted add-ons, or pre-selected paid options." },
-              { item:"Misleading Interfaces", desc:"Our UI is designed to inform, not to confuse or misdirect seller choices." },
-            ].map(d => (
-              <div className="pp-dark-card" key={d.item}>
-                <div className="pp-dark-icon"><XCircle /></div>
-                <strong>{d.item}</strong>
-                <p>{d.desc}</p>
-              </div>
-            ))}
-          </div>
+          <h2 className="pp-section-title">No "Dark Patterns"</h2>
+          <p className="pp-para">We adhere to guidelines issued by the Central Consumer Protection Authority (CCPA) to avoid manipulative interface designs (e.g., false urgency, hidden charges, forced actions). Our platform ensures transparent, fair consent manner, grievance rights).</p>
         </section>
 
         {/* 11 */}
@@ -375,28 +311,15 @@ function PrivacyPolicyPage() {
         {/* 12 */}
         <section className="pp-section">
           <div className="pp-section-label">12</div>
-          <h2 className="pp-section-title">Policy Updates</h2>
-          <p className="pp-para">We review and update this Privacy Policy periodically to reflect changes in our practices, technology, and applicable laws. Whenever material changes are made, we will notify you through all of the following channels:</p>
-          <div className="pp-grid-3">
-            {[
-              { icon:<Globe />,  label:"Platform Notice",  desc:"A prominent notice will be published on the Haatza Seller portal." },
-              { icon:<Mail />,   label:"Email Alert",      desc:"You will receive a direct email notification about the changes." },
-              { icon:<Bell />,   label:"In-App Push",      desc:"An in-dashboard notification will be sent to all active sellers." },
-            ].map(u => (
-              <div className="pp-update-card" key={u.label}>
-                <div className="pp-update-icon">{u.icon}</div>
-                <strong>{u.label}</strong>
-                <p>{u.desc}</p>
-              </div>
-            ))}
-          </div>
+          <h2 className="pp-section-title">Changes to This Policy</h2>
+          <p className="pp-para">Updates to this policy will be promptly published on our platform and communicated via email or banner notices. We will adapt the policy as required when new regulations like DPDP become enforceable.</p>
         </section>
 
         {/* 13 */}
         <section className="pp-section">
           <div className="pp-section-label">13</div>
-          <h2 className="pp-section-title">Contact Information</h2>
-          <p className="pp-para">For any privacy-related queries, concerns, or to exercise your data rights, please reach out to us through the following channels.</p>
+          <h2 className="pp-section-title">Contact Us</h2>
+          <p className="pp-para">For all privacy-related queries, reach out to:</p>
           <div className="pp-contact-card">
             <div className="pp-contact-block">
               <div className="pp-contact-icon"><Mail /></div>
@@ -409,10 +332,10 @@ function PrivacyPolicyPage() {
             <div className="pp-contact-block">
               <div className="pp-contact-icon"><MapPin /></div>
               <div>
-                <label>Registered Address</label>
+                <label>Address</label>
                 <address>
                   #126, RNS Plaza, KIADB Layout, 1st Main,<br />
-                  Near Tech Mahindra Gate 1, Electronic City Phase 2,<br />
+                  Near Tech Mahindra gate 1, Electronic City Phase 2,<br />
                   Doddanagamangala Road, Bengaluru, Karnataka 560100
                 </address>
               </div>

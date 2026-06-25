@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft, Warehouse, CheckCircle2, Phone, Mail, Globe,
   Zap, RotateCcw, BarChart2, Layers, Loader2, Package,
@@ -30,7 +31,45 @@ export default function WarehouseGetStarted({
   email,
   phone,
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const isEditMode = queryParams.get("edit") === "true" || location.state?.edit === true || location.state?.isEdit === true;
+
   const resolvedSellerId = sellerId || sellerService.getCachedSellerId();
+
+  const touchStartPos = useRef(null);
+  const isScrollingRef = useRef(false);
+
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches[0]) {
+      touchStartPos.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+      };
+      isScrollingRef.current = false;
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (touchStartPos.current && e.touches && e.touches[0]) {
+      const diffX = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+      const diffY = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
+      if (diffX > 10 || diffY > 10) {
+        isScrollingRef.current = true;
+      }
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (isScrollingRef.current) {
+      e.preventDefault();
+      setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 50);
+    }
+    touchStartPos.current = null;
+  };
   const resolvedEmail    = email    || sellerService.getCachedSellerEmail();
   const resolvedPhone    = phone    || sellerService.getCachedSellerPhone();
 
@@ -41,30 +80,204 @@ export default function WarehouseGetStarted({
     phone: resolvedPhone || "",
     gstin: "",
     locations: [],
+    location: "",
     gstState: "",
     dsc: "",
+    address: "",
+    warehouseName: "",
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const toggle = (field, value) =>
-    setForm((f) => ({
-      ...f,
-      [field]: f[field].includes(value)
+    setForm((f) => {
+      const nextList = f[field].includes(value)
         ? f[field].filter((v) => v !== value)
-        : [...f[field], value],
-    }));
+        : [...f[field], value];
+      if (errors.locations && nextList.length > 0) {
+        setErrors((prev) => ({ ...prev, locations: "" }));
+      }
+      return {
+        ...f,
+        [field]: nextList,
+        location: (nextList && nextList[0]) || "",
+      };
+    });
+
+  useEffect(() => {
+    let active = true;
+    const loadProfile = async () => {
+      if (!resolvedEmail) return;
+      try {
+        const res = await sellerService.getUserProfile(resolvedEmail, resolvedSellerId);
+        if (!active) return;
+        const p = res?.message || res?.data || res || {};
+        let onboardingData = p.seller || p.data || p;
+        if (Array.isArray(onboardingData)) {
+          onboardingData = onboardingData[0] || {};
+        }
+        if (onboardingData && Object.keys(onboardingData).length > 0) {
+          const loadedLocation = onboardingData.location || onboardingData.warehouseLocation || onboardingData.enrollLocation || (onboardingData.locations && onboardingData.locations[0]) || (onboardingData.warehouseLocations && onboardingData.warehouseLocations[0]) || "";
+          
+          let dbGst = onboardingData.gstState || onboardingData.gstVerification || onboardingData.kamRegistration;
+          if (dbGst === true || dbGst === "true" || dbGst === "Yes") {
+            dbGst = "Yes";
+          } else if (dbGst === false || dbGst === "false" || dbGst === "No") {
+            dbGst = "No";
+          } else {
+            dbGst = "";
+          }
+
+          let dbDsc = onboardingData.dsc || onboardingData.dscVerification || onboardingData.digitalSignature;
+          if (dbDsc === true || dbDsc === "true" || dbDsc === "Yes") {
+            dbDsc = "Yes";
+          } else if (dbDsc === false || dbDsc === "false" || dbDsc === "No") {
+            dbDsc = "No";
+          } else {
+            dbDsc = "";
+          }
+
+          let dbLocations = [];
+          if (typeof loadedLocation === "string" && loadedLocation.trim() !== "") {
+            dbLocations = loadedLocation.split(",").map(s => s.trim()).filter(Boolean);
+          } else if (Array.isArray(loadedLocation)) {
+            dbLocations = loadedLocation;
+          }
+
+          setForm((f) => ({
+            ...f,
+            sellerId: onboardingData.sellerId || onboardingData.seller_id || f.sellerId,
+            email: onboardingData.email || f.email,
+            phone: onboardingData.phone || onboardingData.phone_number || f.phone,
+            relatedEmail: onboardingData.relatedEmail || onboardingData.alternateEmail || f.relatedEmail || "",
+            gstin: onboardingData.GSTIN || onboardingData.gstin || f.gstin || "",
+            location: isEditMode ? (dbLocations[0] || "") : "",
+            locations: isEditMode ? dbLocations : [],
+            gstState: isEditMode ? dbGst : "",
+            dsc: isEditMode ? dbDsc : "",
+            address: onboardingData.address || f.address || "",
+            warehouseName: onboardingData.companyName || onboardingData.warehouseName || f.warehouseName || "",
+          }));
+        }
+      } catch (err) {
+        console.warn("[WarehouseGetStarted] Failed to load seller profile for persistence:", err);
+      }
+    };
+    loadProfile();
+    return () => {
+      active = false;
+    };
+  }, [resolvedEmail, resolvedSellerId]);
+
+  const validateForm = () => {
+    const newErrors = {};
+    const hasLocation = form.location || (form.locations && form.locations.length > 0);
+    if (!hasLocation) {
+      newErrors.locations = "Please select a Warehouse Location";
+    }
+    if (!form.gstState) {
+      newErrors.gstState = "Please select GST Verification";
+    }
+    if (!form.dsc) {
+      newErrors.dsc = "Please select DSC Verification";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
     setLoading(true);
     try {
-      await sellerService.submitWarehouseRequest({
+      const locStr = form.locations && form.locations.length > 0 
+        ? form.locations.join(", ") 
+        : (form.location || "");
+
+      const gstVerification = form.gstState;
+      const dscVerification = form.dsc;
+
+      const formData = {
+        warehouseLocation: locStr,
+        dscVerification: dscVerification === "Yes"
+      };
+
+      // Before API submission: log the Warehouse Location
+      console.log("Warehouse Location:", formData.warehouseLocation);
+
+      // Verify that Warehouse Location is not undefined, null, or empty
+      if (
+        formData.warehouseLocation === undefined ||
+        formData.warehouseLocation === null ||
+        formData.warehouseLocation === ""
+      ) {
+        console.error("[WarehouseGetStarted] Validation failed: warehouseLocation is empty, null, or undefined.", { warehouseLocation: formData.warehouseLocation });
+        alert("Validation error: Warehouse Location must not be empty.");
+        setLoading(false);
+        return;
+      }
+
+      const payload = {
         sellerId: form.sellerId,
         email: form.email,
         phone: form.phone,
+        phoneNumber: form.phone, // Direct key for database Phone Number column
+        relatedEmail: form.relatedEmail,
+        gstin: form.gstin,
+        
+        // Warehouse Location mappings
+        warehouseLocation: formData.warehouseLocation,
+        enrollLocation: formData.warehouseLocation, // Direct Wix CMS key
+
+        // GST Verification mappings
+        gstVerification: gstVerification === "Yes",
+        kamRegistration: gstVerification === "Yes", // Direct Wix CMS key
+
+        // DSC Verification mappings
+        dsc: dscVerification === "Yes", // Direct Wix CMS key for Digital Signature column
+        dscVerification: dscVerification === "Yes",
+        digitalSignature: dscVerification === "Yes", // Direct Wix CMS key
+
+        address: form.address || "",
+        warehouseName: form.warehouseName || "",
         requestType: "Storage",
-      });
-      setSuccess(true);
+      };
+
+      // Before API submission: log validation values
+      console.log("Warehouse Request Payload:", payload);
+
+      const response = await sellerService.submitWarehouseRequest(payload);
+      console.log("[WarehouseGetStarted] submitWarehouseRequest Response:", response);
+
+      const responseStatus = response?.status;
+      const responseId = response?._id || response?.message?._id || response?.data?._id;
+
+      if (responseStatus === "success" && responseId) {
+        try {
+          await sellerService.updateSellerOnboarding(form.email, {
+            locations: form.locations,
+            warehouseLocations: form.locations,
+            warehouseLocation: formData.warehouseLocation,
+            enrollLocation: formData.warehouseLocation,
+            location: formData.warehouseLocation,
+            gstState: form.gstState,
+            gstVerification: gstVerification === "Yes",
+            kamRegistration: gstVerification === "Yes",
+            dsc: form.dsc,
+            dscVerification: dscVerification === "Yes",
+            digitalSignature: dscVerification === "Yes",
+            address: form.address,
+            companyName: form.warehouseName,
+          });
+        } catch (updateErr) {
+          console.warn("[WarehouseGetStarted] Failed to update seller onboarding details:", updateErr);
+        }
+        navigate("/dashboard");
+      } else {
+        throw new Error("Invalid API response status or missing request ID.");
+      }
     } catch (err) {
       console.error("[WarehouseGetStarted] Submit failed:", err);
       alert(err?.message || "Failed to submit request. Please try again.");
@@ -137,9 +350,13 @@ export default function WarehouseGetStarted({
                   className="input"
                   placeholder="SELL-000123"
                   value={form.sellerId}
-                  onChange={(e) => setForm((f) => ({ ...f, sellerId: e.target.value }))}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, sellerId: e.target.value }));
+                    if (errors.sellerId) setErrors((prev) => ({ ...prev, sellerId: "" }));
+                  }}
                 />
               </div>
+              {errors.sellerId && <div className="error-message">{errors.sellerId}</div>}
             </div>
             <div className="field">
               <div className="field-label">Email <span className="field-req">*</span></div>
@@ -149,9 +366,13 @@ export default function WarehouseGetStarted({
                   className="input"
                   placeholder="seller@example.com"
                   value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, email: e.target.value }));
+                    if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
+                  }}
                 />
               </div>
+              {errors.email && <div className="error-message">{errors.email}</div>}
             </div>
             <div className="field">
               <div className="field-label">Related Email</div>
@@ -173,9 +394,13 @@ export default function WarehouseGetStarted({
                   className="input"
                   placeholder="+91 00000 00000"
                   value={form.phone}
-                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, phone: e.target.value }));
+                    if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" }));
+                  }}
                 />
               </div>
+              {errors.phone && <div className="error-message">{errors.phone}</div>}
             </div>
             <div className="field">
               <div className="field-label">GSTIN</div>
@@ -194,16 +419,24 @@ export default function WarehouseGetStarted({
 
         {/* ── Warehouse Locations ── */}
         <div className="card">
-          <div className="card-title">Warehouse Locations</div>
+          <div className="card-title">Warehouse Locations <span className="required-asterisk">*</span></div>
           <div className="card-sub">Choose the locations you'd like to enroll with Haatza</div>
           <div className="loc-grid">
             {LOCATIONS.map((loc) => {
               const sel = form.locations.includes(loc);
               return (
                 <button
+                  type="button"
                   key={loc}
                   className={`loc-card ${sel ? "loc-card-sel" : ""}`}
-                  onClick={() => toggle("locations", loc)}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (isScrollingRef.current) return;
+                    toggle("locations", loc);
+                  }}
                 >
                   <MapPin size={18} className="loc-pin" />
                   {loc}
@@ -215,50 +448,65 @@ export default function WarehouseGetStarted({
               );
             })}
           </div>
+          {errors.locations && <div className="error-message">{errors.locations}</div>}
         </div>
 
         {/* ── GST + DSC Verification ── */}
         <div className="verify-row">
           <div className="card">
-            <div className="card-title">GST Verification</div>
+            <div className="card-title">GST Verification <span className="required-asterisk">*</span></div>
             <div className="card-sub">Is your GST registered in the KAM-recommended state?</div>
             <div className="radio-row">
               {["Yes", "No"].map((opt) => (
-                <label
+                <button
+                  type="button"
                   key={opt}
                   className={`radio-card ${form.gstState === opt ? "radio-sel" : ""}`}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
                   onClick={(e) => {
                     e.preventDefault();
-                    setForm((f) => ({ ...f, gstState: f.gstState === opt ? "" : opt }));
+                    if (isScrollingRef.current) return;
+                    const nextVal = form.gstState === opt ? "" : opt;
+                    setForm((f) => ({ ...f, gstState: nextVal }));
+                    if (errors.gstState && nextVal) setErrors((prev) => ({ ...prev, gstState: "" }));
                   }}
                 >
-                  <input type="radio" name="gstState" value={opt} checked={form.gstState === opt} readOnly />
                   {form.gstState === opt && <CheckCircle2 size={16} />}
                   {opt === "Yes" ? "✓  Yes" : "✗  No"}
-                </label>
+                </button>
               ))}
             </div>
+            {errors.gstState && <div className="error-message">{errors.gstState}</div>}
           </div>
 
           <div className="card">
-            <div className="card-title">DSC Verification</div>
+            <div className="card-title">DSC Verification <span className="required-asterisk">*</span></div>
             <div className="card-sub">Is a Digital Signature Certificate (DSC) available with you?</div>
             <div className="radio-row">
               {["Yes", "No"].map((opt) => (
-                <label
+                <button
+                  type="button"
                   key={opt}
                   className={`radio-card ${form.dsc === opt ? "radio-sel" : ""}`}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
                   onClick={(e) => {
                     e.preventDefault();
-                    setForm((f) => ({ ...f, dsc: f.dsc === opt ? "" : opt }));
+                    if (isScrollingRef.current) return;
+                    const nextVal = form.dsc === opt ? "" : opt;
+                    setForm((f) => ({ ...f, dsc: nextVal }));
+                    if (errors.dsc && nextVal) setErrors((prev) => ({ ...prev, dsc: "" }));
                   }}
                 >
-                  <input type="radio" name="dsc" value={opt} checked={form.dsc === opt} readOnly />
                   {form.dsc === opt && <CheckCircle2 size={16} />}
                   {opt === "Yes" ? "✓  Yes" : "✗  No"}
-                </label>
+                </button>
               ))}
             </div>
+            {errors.dsc && <div className="error-message">{errors.dsc}</div>}
           </div>
         </div>
 
@@ -308,34 +556,6 @@ export default function WarehouseGetStarted({
           </button>
         </div>
       </div>
-
-      {/* ── Sticky Submit (mobile) ── */}
-      <div className="sticky-bar">
-        <button className="submit-btn" onClick={handleSubmit} disabled={loading}>
-          {loading ? <><Loader2 size={18} className="spin" /> Processing…</> : "Request Service"}
-        </button>
-      </div>
-
-      {/* ── Success Modal ── */}
-      {success && (
-        <div className="modal-overlay" onClick={() => setSuccess(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-icon"><CheckCircle2 size={38} /></div>
-            <div className="modal-title">Request Submitted Successfully</div>
-            <div className="modal-desc">
-              Your warehouse service request has been submitted successfully. Our team will contact you shortly.
-            </div>
-            <div className="modal-btns">
-              <button className="submit-btn" onClick={() => setSuccess(false)}>
-                Back to Dashboard
-              </button>
-              <button className="btn-outline" onClick={() => setSuccess(false)}>
-                Track Request
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

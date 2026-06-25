@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
+import LogoutConfirmModal from "../../common/LogoutConfirmModal/LogoutConfirmModal";
 import "./Navbar.css";
 import haatzaSellerLogo from "../../../assets/Images/haatzaSellerlogo.png";
 import {
@@ -27,8 +28,8 @@ const HaatzaNavbar = ({ seller: propSeller = {} }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-
-  const seller = user || propSeller;
+  const seller = user || propSeller || {};
+  console.log("Navbar Seller Data:", seller);
 
   const [dropdownOpen, setDropdownOpen]         = useState(false);
   const [mobileIconsOpen, setMobileIconsOpen]   = useState(false);
@@ -36,6 +37,9 @@ const HaatzaNavbar = ({ seller: propSeller = {} }) => {
   const [searchFocused, setSearchFocused]       = useState(false);
   const [searchValue, setSearchValue]           = useState("");
   const [scrolled, setScrolled]                 = useState(false);
+
+  /* ── NEW: Logout confirmation modal state ─────────────────── */
+  const [showLogoutModal, setShowLogoutModal]   = useState(false);
 
   // Dropdown states
   const [remindersDropdownOpen, setRemindersDropdownOpen] = useState(false);
@@ -45,11 +49,19 @@ const HaatzaNavbar = ({ seller: propSeller = {} }) => {
 
   const greeting = getGreeting();
 
-  const sellerName    = seller?.nickname || seller?.name || seller?.companyName || "";
-  const sellerEmail   = seller?.email         || "";
-  const sellerRole    = seller?.role          || "Seller";
-  const sellerInitial = seller?.avatarInitial || (sellerName ? sellerName.charAt(0).toUpperCase() : "");
-  const sellerLogoUrl = seller?.logoUrl       || null;
+  const sellerName    =
+    seller.name ||
+    seller.fullName ||
+    seller.sellerName ||
+    seller.userName ||
+    seller.firstName ||
+    seller.nickname ||
+    "";
+  const sellerEmail   = seller.email         || "";
+  const sellerRole    = seller.role          || "Seller";
+  const sellerId      = seller.sellerId      || "";
+  const sellerInitial = seller.avatarInitial || (sellerName ? sellerName.charAt(0).toUpperCase() : "");
+  const sellerLogoUrl = seller.logoUrl       || null;
 
   const toggleRemindersDropdown = () => {
     const nextState = !remindersDropdownOpen;
@@ -101,6 +113,18 @@ const HaatzaNavbar = ({ seller: propSeller = {} }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  /* ── Confirmed logout: run existing auth logout + navigate ── */
+  const handleLogoutConfirm = () => {
+    setShowLogoutModal(false);
+    logout();
+    navigate("/signup");
+  };
+
+  /* ── Cancelled: just close the popup ─────────────────────── */
+  const handleLogoutCancel = () => {
+    setShowLogoutModal(false);
+  };
+
   const dropdownItems = [
     {
       icon: React.createElement(User, { size: 16 }),
@@ -127,13 +151,13 @@ const HaatzaNavbar = ({ seller: propSeller = {} }) => {
       onClick: () => { setDropdownOpen(false); navigate("/dashboard/help"); }
     },
     {
+      /* ── CHANGED: instead of running logout() directly, open the modal ── */
       icon: React.createElement(LogOut, { size: 16 }),
       label: "Logout",
       danger: true,
       onClick: () => {
-        setDropdownOpen(false);
-        logout();
-        navigate("/signin");
+        setDropdownOpen(false);       // close the profile dropdown first
+        setShowLogoutModal(true);     // then show the confirmation popup
       }
     },
   ];
@@ -157,19 +181,21 @@ const HaatzaNavbar = ({ seller: propSeller = {} }) => {
       : React.createElement("div", { className: "dropdown-avatar" }, sellerInitial);
 
   /* ── Greeting text shared between mobile & desktop center ── */
-  const GreetingText = () =>
-    React.createElement(
+  const GreetingText = () => {
+    const firstName = sellerName ? sellerName.trim().split(/\s+/)[0] : "";
+    return React.createElement(
       "p", { className: "greeting-text" },
       greeting,
-      sellerName
+      firstName
         ? React.createElement(
             React.Fragment, null,
             ", ",
-            React.createElement("span", { className: "greeting-name" }, sellerName)
+            React.createElement("span", { className: "greeting-name" }, firstName)
           )
         : null,
       " 👋"
     );
+  };
 
   /* ── 3-dot vertical icon SVG ── */
   const ThreeDotsIcon = () =>
@@ -181,7 +207,6 @@ const HaatzaNavbar = ({ seller: propSeller = {} }) => {
         fill: "currentColor",
         xmlns: "http://www.w3.org/2000/svg",
       },
-      /* Three filled circles */
       React.createElement("circle", { cx: "12", cy: "5",  r: "1.5" }),
       React.createElement("circle", { cx: "12", cy: "12", r: "1.5" }),
       React.createElement("circle", { cx: "12", cy: "19", r: "1.5" })
@@ -190,6 +215,15 @@ const HaatzaNavbar = ({ seller: propSeller = {} }) => {
   return React.createElement(
     React.Fragment,
     null,
+
+    /* ══════════════════════════════════════════════
+       LOGOUT CONFIRMATION MODAL
+    ══════════════════════════════════════════════ */
+    React.createElement(LogoutConfirmModal, {
+      isOpen: showLogoutModal,
+      onYes:  handleLogoutConfirm,
+      onNo:   handleLogoutCancel,
+    }),
 
     /* ══════════════════════════════════════════════
        NAVBAR
@@ -345,11 +379,12 @@ const HaatzaNavbar = ({ seller: propSeller = {} }) => {
                     "div", { className: "dropdown-user-info" },
                     sellerName &&
                       React.createElement("p", { className: "dropdown-name" }, sellerName),
-                    /* Full email — word-break: break-all in CSS handles long addresses */
                     sellerEmail &&
                       React.createElement("p", { className: "dropdown-email" }, sellerEmail),
                     sellerRole &&
-                      React.createElement("p", { className: "dropdown-role" }, sellerRole)
+                      React.createElement("p", { className: "dropdown-role" }, sellerRole),
+                    sellerId &&
+                      React.createElement("p", { className: "dropdown-role", style: { fontSize: "11.5px", color: "rgba(0, 0, 0, 0.45)", marginTop: "2px" } }, `Seller ID: ${sellerId}`)
                   )
                 ),
 
@@ -420,7 +455,6 @@ const HaatzaNavbar = ({ seller: propSeller = {} }) => {
 
     /* ══════════════════════════════════════════════
        MOBILE / TABLET DRAWER — Bell, Wallet, Messages
-       Opens via 3-dot button on tablet + mobile
     ══════════════════════════════════════════════ */
     React.createElement(
       "div",

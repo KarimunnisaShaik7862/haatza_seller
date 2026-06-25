@@ -12,6 +12,9 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: #ffffff !important;
 }
 
 .orders-header-top {
@@ -186,9 +189,15 @@
   to { transform: rotate(360deg); }
 }
 
+@media (max-width: 1024px) {
+  .orders-page {
+    padding: 20px 24px;
+  }
+}
+
 @media (max-width: 640px) {
   .orders-page {
-    padding: 16px;
+    padding: 16px 12px;
   }
 
   .orders-header {
@@ -207,13 +216,21 @@
     flex: 1;
     justify-content: center;
   }
+  
+  .order-tab {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
 }
+
 
 /* Custom Date Range Picker / Calendar Styles */
 .orders-calendar-dropdown {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
   background-color: #ffffff;
   border: 1px solid #E2E8F0;
   border-radius: 12px;
@@ -221,23 +238,44 @@
   display: flex;
   overflow: hidden;
   z-index: 1000;
-  min-width: 440px;
-  animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 390px;
+  width: 390px;
+  animation: dropdownFadeInDesktop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes dropdownFadeIn {
+.orders-calendar-dropdown:hover {
+  transform: translateX(-50%) !important;
+}
+
+@keyframes dropdownFadeInDesktop {
   from {
     opacity: 0;
-    transform: translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
+.orders-calendar-close-btn {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  color: #94A3B8;
+  cursor: pointer;
+  z-index: 1001;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.orders-calendar-close-btn:hover {
+  color: #EF4444;
+}
+
 .orders-calendar-sidebar {
-  width: 130px;
+  width: 110px;
   border-right: 1px solid #EEF2F6;
   padding: 12px;
   display: flex;
@@ -279,14 +317,16 @@
 }
 
 .orders-calendar-main {
+  position: relative;
   flex: 1;
-  padding: 16px;
+  padding: 16px 14px;
 }
 
 .orders-calendar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: 8px;
   margin-bottom: 16px;
 }
 
@@ -397,8 +437,80 @@
   }
 }
 
+/* Styling for the new single dropdown selector */
+.orders-status-dropdown-container {
+  display: none; /* Hidden by default on desktop/laptop */
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.orders-status-select {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid #E5E9F5;
+  background-color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px;
+  padding-right: 40px;
+  box-sizing: border-box !important;
+}
+
+.orders-status-select:hover {
+  border-color: var(--primary);
+}
+
+.orders-status-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(41, 98, 255, 0.1);
+}
+
+/* Mobile Header top bar */
+.orders-mobile-header {
+  height: 56px;
+  background: #2962FF;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+}
+
+.orders-mobile-header .mobile-back-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.orders-mobile-header-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
 /* Responsiveness for smaller viewports */
 @media (max-width: 768px) {
+  .orders-status-select {
+    font-size: 16px !important;
+  }
+
+  .orders-status-select:focus {
+    box-shadow: none !important;
+  }
+
   .orders-filters {
     flex-direction: column;
     gap: 10px;
@@ -411,47 +523,92 @@
   }
 
   .orders-calendar-dropdown {
-    right: 50%;
-    transform: translateX(50%);
-    top: calc(100% + 4px);
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    margin: 0 !important;
+    z-index: 1000 !important;
+    min-width: 270px !important;
+    width: 270px !important;
+    max-width: none !important;
+    animation: dropdownFadeInMobile 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    flex-direction: column !important;
+  }
+
+  .orders-calendar-sidebar {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    padding: 8px !important;
+    gap: 8px !important;
+    background-color: #F8FAFC !important;
+  }
+
+  .calendar-preset-btn {
+    white-space: nowrap !important;
+    font-size: 12px !important;
+    padding: 6px 10px !important;
+  }
+
+  .calendar-preset-btn.clear-btn {
+    margin-top: 0 !important;
+    border-top: none !important;
+    padding-top: 6px !important;
+  }
+
+  .orders-calendar-main {
+    padding: 12px !important;
+  }
+
+  .orders-calendar-day {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+  }
+
+  .orders-calendar-days-grid {
+    gap: 2px !important;
+  }
+
+  .orders-calendar-header {
+    margin-top: 12px !important;
+    margin-bottom: 8px !important;
+  }
+}
+
+@keyframes dropdownFadeInMobile {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
 @media (max-width: 480px) {
-  .orders-calendar-dropdown {
-    flex-direction: column;
-    min-width: 290px;
-    width: 100%;
+  /* Inherits absolute placement below trigger */
+}
+
+/* Responsive visibility overrides for status tabs vs dropdown */
+@media (max-width: 640px) {
+  .orders-status-dropdown-container {
+    display: flex;
   }
-  
-  .orders-calendar-sidebar {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid #E2E8F0;
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 8px;
-    gap: 8px;
-    background-color: #F8FAFC;
+  .orders-tabs {
+    display: none;
   }
-  
-  .calendar-preset-btn {
-    white-space: nowrap;
-    font-size: 12px;
-    padding: 6px 10px;
+}
+
+/* Tablet responsiveness: Switch to dropdown if sidebar is open on smaller viewports */
+@media (max-width: 1024px) {
+  .sidebar-open .orders-status-dropdown-container {
+    display: flex;
   }
-  
-  .calendar-preset-btn.clear-btn {
-    margin-top: 0;
-    border-top: none;
-    padding-top: 6px;
-  }
-  
-  .orders-calendar-main {
-    padding: 12px;
-  }
-  
-  .orders-calendar-day {
-    font-size: 12px;
+  .sidebar-open .orders-tabs {
+    display: none;
   }
 }

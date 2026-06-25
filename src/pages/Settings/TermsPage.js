@@ -1,6 +1,6 @@
-// src/pages/Settings/TermsPage.jsx
+// src/pages/Settings/TermsPage.js
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   ShieldCheck,
   Clock,
@@ -27,10 +27,13 @@ import {
   ChevronLeft,
   FileSignature,
   ClipboardCheck,
+  ChevronUp,
+  Wallet,
+  Gift,
 } from "lucide-react";
 import "./TermsPage.css";
 
-/* ── Static content data — Haatza Seller T&C ─────────────── */
+/* ── Static content data — Haatza Seller T&C (Original) ─────────────── */
 const KPI_CARDS = [
   { icon: LayoutList, value: "7", label: "Policy Sections" },
   { icon: ShieldCheck, value: "100%", label: "Compliance Required" },
@@ -148,11 +151,262 @@ const SUMMARY_CARDS = [
   { icon: Gavel, title: "Dispute Resolution", req: "Use of appropriate consumer forums or platforms" },
 ];
 
+/* ── Static content data — Referral Program T&C (New) ─────────────── */
+const REFERRAL_KPI_CARDS = [
+  { icon: LayoutList, value: "7", label: "Policy Sections" },
+  { icon: ShieldCheck, value: "100%", label: "Compliance Required" },
+  { icon: Clock, value: "₹500", label: "Referral Reward" },
+  { icon: RefreshCw, value: "Unlimited", label: "Referrals" },
+];
+
+/* ── Static content data — Referral FAQs (New) ───────────────────── */
+const FAQ_ITEMS = [
+  {
+    question: "Share your referral code",
+    answer: "Get your unique referral code from the Haatza Seller App and share it with new sellers via WhatsApp, Email, SMS, or any other method."
+  },
+  {
+    question: "New seller signs up",
+    answer: "The referred seller must enter your referral code manually during the sign-up process to be eligible for referral benefits."
+  },
+  {
+    question: "New seller purchases subscription",
+    answer: "The referral will only be considered valid once the referred seller purchases a paid subscription plan on Haatza."
+  },
+  {
+    question: "Claim your reward",
+    answer: "Once the referred seller subscribes, you can manually claim your ₹500 reward in the “Refer & Earn” section of the Haatza Seller App."
+  }
+];
+
 /* ── Component ────────────────────────────────────────────── */
-function TermsPage() {
+export default function TermsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [openAccordion, setOpenAccordion] = useState(0);
 
+  const isReferral = location.state?.type === "referral";
+  const isFaq = location.state?.type === "faq";
+
+  const [activeFaq, setActiveFaq] = useState({
+    0: true,
+    1: true,
+    2: true,
+    3: true
+  });
+
+  const toggleFaq = (index) => {
+    setActiveFaq(prev => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  if (isFaq) {
+    return (
+      <div className="terms-page">
+        {/* ── Hero ── */}
+        <header className="terms-hero">
+          <button
+            className="terms-back-btn"
+            onClick={() => navigate(-1)}
+            aria-label="Back"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <div className="terms-hero-left">
+            <span className="terms-badge">
+              <RefreshCw size={13} /> Updated FAQ
+            </span>
+            <h1>Frequently Asked Questions</h1>
+            <p>
+              Common questions and answers about the Haatza Seller referral program, rewards, eligibility, and rules.
+            </p>
+          </div>
+          <div className="terms-hero-illo" aria-hidden="true">
+            <div className="illo-circle">
+              <Gift size={36} />
+            </div>
+          </div>
+        </header>
+
+        {/* FAQs List container */}
+        <div className="terms-body">
+          {FAQ_ITEMS.map((faq, index) => {
+            const isOpen = activeFaq[index];
+            return (
+              <div className="accordion" key={index}>
+                <button
+                  className="acc-header"
+                  onClick={() => toggleFaq(index)}
+                  aria-expanded={isOpen}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
+                  <span className="acc-title">{faq.question}</span>
+                  <ChevronDown
+                    size={16}
+                    className="acc-chevron"
+                    style={{ transform: isOpen ? "rotate(180deg)" : "none" }}
+                  />
+                </button>
+                <div className={`acc-body ${isOpen ? "open" : ""}`}>
+                  <div style={{ padding: "0 20px 18px 20px", fontSize: "13.5px", color: "#4b5563", lineHeight: "1.75" }}>
+                    <p style={{ margin: 0 }}>{faq.answer}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (isReferral) {
+    return (
+      <div className="terms-page">
+        {/* ── Hero ── */}
+        <header className="terms-hero">
+          <button
+            className="terms-back-btn"
+            onClick={() => navigate(-1)}
+            aria-label="Back"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <div className="terms-hero-left">
+            <span className="terms-badge">
+              <RefreshCw size={13} /> Updated Policy
+            </span>
+            <h1>Terms &amp; Conditions</h1>
+            <p>
+              Referral program terms, eligibility, reward structures, and
+              platform guidelines for Refer &amp; Earn on Haatza Seller.
+            </p>
+          </div>
+          <div className="terms-hero-illo" aria-hidden="true">
+            <div className="illo-circle">
+              <Scale size={36} />
+            </div>
+          </div>
+        </header>
+
+        {/* ── KPI bar ── */}
+        <div className="terms-kpi-bar">
+          {REFERRAL_KPI_CARDS.map(({ icon: Icon, value, label }) => (
+            <div className="kpi-card" key={label}>
+              <div className="kpi-icon">
+                <Icon size={15} />
+              </div>
+              <div>
+                <div className="kpi-val">{value}</div>
+                <div className="kpi-lbl">{label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Main content ── */}
+        <div className="terms-body">
+
+          {/* 1. Eligibility */}
+          <section className="terms-section" id="eligibility">
+            <div className="sec-header">
+              <span className="sec-num">1</span>
+              <h2>Eligibility</h2>
+            </div>
+            <div className="card">
+              <p>
+                The referral program is open to all registered sellers on the Haatza Seller platform who have successfully completed their onboarding.
+              </p>
+            </div>
+          </section>
+
+          {/* 2. Referral Process */}
+          <section className="terms-section" id="referral-process">
+            <div className="sec-header">
+              <span className="sec-num">2</span>
+              <h2>Referral Process</h2>
+            </div>
+            <div className="card">
+              <p>
+                Existing sellers can refer unlimited new sellers by sharing their unique referral code. The referred seller must manually enter this code during sign-up to be eligible for referral benefits.
+              </p>
+            </div>
+          </section>
+
+          {/* 3. Referral Benefits */}
+          <section className="terms-section" id="referral-benefits">
+            <div className="sec-header">
+              <span className="sec-num">3</span>
+              <h2>Referral Benefits</h2>
+            </div>
+            <div className="card">
+              <p>
+                The referring seller will receive a reward of ₹500 for every new seller they successfully refer who purchases a subscription plan. There is no limit — the more sellers you refer, the more rewards you earn. The referred seller will also receive exclusive onboarding benefits as part of the program.
+              </p>
+            </div>
+          </section>
+
+          {/* 4. Reward Claim */}
+          <section className="terms-section" id="reward-claim">
+            <div className="sec-header">
+              <span className="sec-num">4</span>
+              <h2>Reward Claim</h2>
+            </div>
+            <div className="card">
+              <p>
+                Referral rewards are not auto-credited. Eligible sellers must claim their reward through the Refer &amp; Earn section. Once claimed, rewards will be processed within 7 business days. Rewards are non-transferable and cannot be exchanged for cash.
+              </p>
+            </div>
+          </section>
+
+          {/* 5. Program Limitations */}
+          <section className="terms-section" id="program-limitations">
+            <div className="sec-header">
+              <span className="sec-num">5</span>
+              <h2>Program Limitations</h2>
+            </div>
+            <div className="card">
+              <p>
+                There is no limit to how many new sellers you can refer. However, self-referrals or referrals made through fraudulent or invalid means will result in disqualification and forfeiture of any rewards.
+              </p>
+            </div>
+          </section>
+
+          {/* 6. Modification and Termination */}
+          <section className="terms-section" id="modification-termination">
+            <div className="sec-header">
+              <span className="sec-num">6</span>
+              <h2>Modification and Termination</h2>
+            </div>
+            <div className="card">
+              <p>
+                Haatza Seller reserves the right to modify, suspend, or terminate the referral program at any time without prior notice. Updates will be communicated via the platform.
+              </p>
+            </div>
+          </section>
+
+          {/* 7. Acceptance of Terms */}
+          <section className="terms-section" id="acceptance-terms">
+            <div className="sec-header">
+              <span className="sec-num">7</span>
+              <h2>Acceptance of Terms</h2>
+            </div>
+            <div className="card">
+              <p>
+                By participating in the referral program, sellers agree to abide by these terms and conditions. Failure to comply may result in disqualification from the program.
+              </p>
+            </div>
+          </section>
+
+          {/* Support Info */}
+          <div style={{ marginTop: "24px", color: "var(--text-secondary)", fontSize: "14px", fontStyle: "italic", textAlign: "center" }}>
+            For questions or assistance regarding the referral program, please contact Haatza Seller Support.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Original General terms & conditions layout:
   return (
     <div className="terms-page">
       {/* ── Hero ── */}
@@ -429,5 +683,3 @@ function TermsPage() {
     </div>
   );
 }
-
-export default TermsPage;

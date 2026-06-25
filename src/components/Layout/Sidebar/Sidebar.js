@@ -4,6 +4,7 @@ import ReactDOM from "react-dom";
 import { sellerService } from "../../../services/sellerService";
 import { getSellerId } from "../../../utils/sellerSession";
 import { useAuth } from "../../../context/AuthContext";
+import LogoutConfirmModal from "../../common/LogoutConfirmModal/LogoutConfirmModal";
 import "./Sidebar.css";
 
 const KEY_TO_ROUTE = {
@@ -22,7 +23,7 @@ const KEY_TO_ROUTE = {
   influencer:      "/dashboard/influencer",
   growthcentral:   "/dashboard/growthcentral",
   qualityinsights: "/dashboard/qualityinsights",
-  referandearn:    "/dashboard/referandearn",
+  referandearn:    "/refer-earn",
   settings:        "/dashboard/settings",
 };
  
@@ -209,11 +210,6 @@ const ChevronRightIcon = () =>
 
 /* ─────────────────────────────────────────────────────────────
    SIDEBAR TOOLTIP
-   ─────────────────────────────────────────────────────────────
-   Rendered into document.body via a React portal.
-   Position is set from anchorRect (getBoundingClientRect of the
-   hovered nav button), so it tracks perfectly during scroll —
-   no CSS ::after hack, no stale coordinate issues.
    ───────────────────────────────────────────────────────────── */
 function SidebarTooltip({ label, anchorRect, visible }) {
   const tooltipRef = useRef(null);
@@ -223,21 +219,17 @@ function SidebarTooltip({ label, anchorRect, visible }) {
   useEffect(() => {
     if (!anchorRect) { setReady(false); return; }
 
-    // Tooltip gap from sidebar right edge → tooltip left edge
     const GAP = 14;
-    // Estimated height before first render; actual height used after mount
     const estimatedH = tooltipRef.current ? tooltipRef.current.offsetHeight : 36;
 
     const rawTop  = anchorRect.top  + anchorRect.height / 2 - estimatedH / 2;
     const rawLeft = anchorRect.right + GAP;
 
-    // Clamp vertically inside the viewport
     const maxTop = window.innerHeight - estimatedH - 8;
     setCoords({ top: Math.max(8, Math.min(rawTop, maxTop)), left: rawLeft });
     setReady(true);
   }, [anchorRect]);
 
-  // Nothing to show — keep it completely out of the paint tree
   if (!label) return null;
 
   return ReactDOM.createPortal(
@@ -249,7 +241,6 @@ function SidebarTooltip({ label, anchorRect, visible }) {
         style:        { top: coords.top, left: coords.left },
         "aria-hidden": "true",
       },
-      /* Left-pointing caret */
       React.createElement("span", { className: "sidebar-tooltip__caret", "aria-hidden": "true" }),
       label
     ),
@@ -264,7 +255,6 @@ function NavItem({ item, active, onClick, isCollapsed, onTooltipShow, onTooltipH
   const btnRef = useRef(null);
   const isTouchDevice = useRef(false);
 
-  // Detect touch device
   useEffect(() => {
     isTouchDevice.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }, []);
@@ -279,10 +269,8 @@ function NavItem({ item, active, onClick, isCollapsed, onTooltipShow, onTooltipH
     if (onTooltipHide) onTooltipHide();
   }, [onTooltipHide]);
 
-  // Touch handlers for mobile/tablet - persistent tooltip
   const handleTouchStart = useCallback((e) => {
     if (!isCollapsed || !onTooltipShow || !isTouchDevice.current) return;
-    
     const rect = btnRef.current?.getBoundingClientRect();
     if (rect) {
       onTooltipShow(item.label, rect, item.key);
@@ -290,10 +278,9 @@ function NavItem({ item, active, onClick, isCollapsed, onTooltipShow, onTooltipH
   }, [isCollapsed, onTooltipShow, item.label, item.key, isTouchDevice]);
 
   const handleTouchEnd = useCallback((e) => {
-    // Only handle click navigation, tooltip stays persistent
     setTimeout(() => {
       if (onClick) onClick(item.key);
-    }, 50); // Small delay for smooth UX
+    }, 50);
   }, [onClick, item.key]);
 
   return React.createElement(
@@ -337,6 +324,20 @@ function SellerProfile({ sellerName = "", sellerEmail = "", sellerPhone = "", se
     .toUpperCase()
     .slice(0, 2) || "";
 
+  const profileInfo = !isCollapsed
+    ? React.createElement(
+        "div",
+        { className: "profile__info" },
+        React.createElement("p", { className: "profile__name" }, sellerName || ""),
+        React.createElement(
+          "div",
+          { className: "profile__email-container" },
+          React.createElement("p", { className: "profile__email" }, sellerEmail || "seller@haatza.com"),
+          
+        )
+      )
+    : null;
+
   return React.createElement(
     "div",
     {
@@ -346,57 +347,12 @@ function SellerProfile({ sellerName = "", sellerEmail = "", sellerPhone = "", se
       ].filter(Boolean).join(" "),
       title: isCollapsed ? sellerName : undefined,
     },
-    React.createElement("div", { className: "profile__avatar" },
+    React.createElement(
+      "div",
+      { className: "profile__avatar" },
       React.createElement("span", { className: "profile__avatar-initials" }, initials)
     ),
-    !isCollapsed && React.createElement(
-      "div", { className: "profile__info" },
-      React.createElement("p", { className: "profile__name" }, sellerName || ""),
-      React.createElement("div", { className: "profile__email-container" },
-        React.createElement("p", { className: "profile__email" }, sellerEmail || "seller@haatza.com"),
-        React.createElement("button", {
-          className: "profile__action-btn",
-          title:     "View Store Profile",
-          onClick:   onProfileClick,
-        },
-          React.createElement("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round" },
-            React.createElement("path", { d: "M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" }),
-            React.createElement("polyline", { points: "15 3 21 3 21 9" }),
-            React.createElement("line", { x1: "10", y1: "14", x2: "21", y2: "3" })
-          )
-        )
-      ),
-      sellerPhone && React.createElement(
-        "p",
-        {
-          className: "profile__phone",
-          style: {
-            fontSize: "12.5px",
-            color: "rgba(255, 255, 255, 0.5)",
-            marginTop: "3px",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis"
-          }
-        },
-        sellerPhone
-      ),
-      sellerId && React.createElement(
-        "p",
-        {
-          className: "profile__id",
-          style: {
-            fontSize: "12.5px",
-            color: "rgba(255, 255, 255, 0.5)",
-            marginTop: "3px",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis"
-          }
-        },
-        sellerId
-      )
-    )
+    profileInfo
   );
 }
 
@@ -411,34 +367,65 @@ function Sidebar({
   onProfileClick = () => {},
   onCollapseChange,
 }) {
+  const { user, logout } = useAuth();
+  const seller = user || {};
+
+  const sellerNameResolved =
+    seller.name ||
+    seller.fullName ||
+    seller.sellerName ||
+    seller.userName ||
+    seller.firstName ||
+    seller.nickname ||
+    sellerName ||
+    "";
+  const sellerEmailResolved = seller.email || sellerEmail || "";
+  const sellerPhoneResolved = seller.phone || sellerPhone || "";
+  const sellerIdResolved = seller.sellerId || sellerId || "";
+
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(
     () => typeof window !== "undefined" && window.innerWidth <= 768
   );
+
+  /* ── NEW: Logout confirmation modal state ─────────────────── */
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const activeKey = (() => {
     const path = location.pathname;
 
     if (
-      path.includes("/listing") ||
-      path.includes("/my-listings") ||
-      path.includes("/inprogress-listings")
+      path.includes("/referearn") ||
+      path.includes("/referandearn") ||
+      path.includes("/refer-earn") ||
+      location.state?.type === "referral" ||
+      location.state?.type === "faq"
     ) {
-      return "listing";
+      return "referandearn";
     }
-
-    if (path.includes("/product-insight") || path.includes("/productinsight")) {
-      return "productinsight";
-    }
-
-    return ROUTE_TO_KEY[path] ?? "dashboard";
+    if (path.includes("/orders"))      return "orders";
+    if (path.includes("/returns") || path.includes("/return-exchange")) return "returns";
+    if (path.includes("/listing") || path.includes("/my-listings") || path.includes("/inprogress-listings")) return "listing";
+    if (path.includes("/inventory"))   return "inventory";
+    if (path.includes("/settlements") || path.includes("/payments")) return "settlements";
+    if (path.includes("/settings"))    return "settings";
+    if (path.includes("/help"))        return "help";
+    if (path.includes("/advertisement")) return "advertisement";
+    if (path.includes("/haatzaup") || path.includes("/haatzup")) return "haatzup";
+    if (path.includes("/growplan"))    return "growplan";
+    if (path.includes("/product-insight") || path.includes("/productinsight")) return "productinsight";
+    if (path.includes("/warehouse"))   return "warehouse";
+    if (path.includes("/influencer"))  return "influencer";
+    if (path.includes("/growthcentral")) return "growthcentral";
+    if (path.includes("/qualityinsights")) return "qualityinsights";
+    if (path === "/dashboard" || path === "/" || path.startsWith("/dashboard/")) return "dashboard";
+    return ROUTE_TO_KEY[path] || "";
   })();
 
   /* ── Dynamic badge counts ─────────────────────────────────── */
   const [menuSections, setMenuSections] = useState(NAV_SECTIONS);
-  const activeSellerId = sellerId || getSellerId();
+  const activeSellerId = sellerIdResolved || getSellerId();
 
   useEffect(() => {
     if (!activeSellerId) return;
@@ -493,11 +480,11 @@ function Sidebar({
           prevSections.map(section => ({
             ...section,
             items: section.items.map(item => {
-              if (item.key === "orders")        return { ...item, badge: ordersCount > 0      ? String(ordersCount)          : undefined };
-              if (item.key === "help")          return { ...item, badge: ticketsCount > 0     ? String(ticketsCount)         : undefined };
-              if (item.key === "notifications") return { ...item, badge: unreadNotifCount > 0 ? String(unreadNotifCount)     : undefined };
-              if (item.key === "wallet")        return { ...item, badge: walletLabel           ? walletLabel                 : undefined };
-              if (item.key === "advertisement") return { ...item, badge: activeCampaigns > 0  ? `${activeCampaigns} Active`  : undefined };
+              if (item.key === "orders")        return { ...item, badge: ordersCount > 0      ? String(ordersCount)         : undefined };
+              if (item.key === "help")          return { ...item, badge: ticketsCount > 0     ? String(ticketsCount)        : undefined };
+              if (item.key === "notifications") return { ...item, badge: unreadNotifCount > 0 ? String(unreadNotifCount)    : undefined };
+              if (item.key === "wallet")        return { ...item, badge: walletLabel           ? walletLabel                : undefined };
+              if (item.key === "advertisement") return { ...item, badge: activeCampaigns > 0  ? `${activeCampaigns} Active` : undefined };
               return item;
             }),
           }))
@@ -522,7 +509,6 @@ function Sidebar({
   const hideTimer = useRef(null);
   const isTouchDevice = useRef(false);
 
-  // Detect touch device
   useEffect(() => {
     isTouchDevice.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }, []);
@@ -533,18 +519,15 @@ function Sidebar({
   }, []);
 
   const handleTooltipHide = useCallback(() => {
-    // For desktop: hide immediately
     if (!isTouchDevice.current) {
       clearTimeout(hideTimer.current);
       setTooltip({ label: "", anchorRect: null, visible: false, activeKey: null });
     }
   }, [isTouchDevice]);
 
-  // Hide tooltip on outside clicks (mobile)
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (isCollapsed && tooltip.visible && isTouchDevice.current) {
-        // Check if click is outside sidebar and tooltip
         if (!e.target.closest('.sidebar') && !e.target.closest('.sidebar-tooltip')) {
           setTooltip({ label: "", anchorRect: null, visible: false, activeKey: null });
         }
@@ -562,12 +545,10 @@ function Sidebar({
     };
   }, [isCollapsed, tooltip.visible, isTouchDevice]);
 
-  // Update tooltip position when scrolling (for active tooltip)
   useEffect(() => {
     let rafId;
     const updateTooltipPosition = () => {
       if (tooltip.visible && tooltip.anchorRect && isCollapsed && isTouchDevice.current) {
-        // Find the current nav item by key or position
         const navItems = document.querySelectorAll('.nav-item');
         for (let item of navItems) {
           if (item.classList.contains(`nav-item--tooltip-active`)) {
@@ -589,7 +570,6 @@ function Sidebar({
     };
   }, [tooltip.visible, tooltip.activeKey, isCollapsed, isTouchDevice]);
 
-  // Kill tooltip instantly on sidebar expand
   useEffect(() => {
     if (!isCollapsed) {
       clearTimeout(hideTimer.current);
@@ -603,7 +583,6 @@ function Sidebar({
     const onBreakpoint = (e) => { 
       if (e.matches) {
         setIsCollapsed(true);
-        // Hide tooltip on mobile collapse
         setTooltip({ label: "", anchorRect: null, visible: false, activeKey: null });
       }
     };
@@ -615,16 +594,34 @@ function Sidebar({
     if (typeof onCollapseChange === "function") onCollapseChange(isCollapsed);
   }, [isCollapsed, onCollapseChange]);
 
-  const handleToggle       = useCallback(() => setIsCollapsed(prev => !prev), []);
-  const handleItemClick    = useCallback((key) => {
+  const handleToggle    = useCallback(() => setIsCollapsed(prev => !prev), []);
+
+  /* ─────────────────────────────────────────────────────────
+     handleItemClick — "logout" now opens the confirmation
+     modal instead of immediately running logout().
+     All other nav items behave exactly as before.
+  ───────────────────────────────────────────────────────── */
+  const handleItemClick = useCallback((key) => {
     if (key === "logout") {
-      logout();
-      navigate("/signin");
+      setShowLogoutModal(true); // open confirmation popup
       return;
     }
     const route = KEY_TO_ROUTE[key];
     if (route) navigate(route);
-  }, [navigate, logout]);
+  }, [navigate]);
+
+  /* ── Confirmed logout: run existing auth logout + navigate ─ */
+  const handleLogoutConfirm = useCallback(() => {
+    setShowLogoutModal(false);
+    logout();
+    navigate("/signup");
+  }, [logout, navigate]);
+
+  /* ── Cancelled: just close the popup ─────────────────────── */
+  const handleLogoutCancel = useCallback(() => {
+    setShowLogoutModal(false);
+  }, []);
+
   const handleProfileClick = useCallback((e) => { 
     e.stopPropagation(); 
     onProfileClick(); 
@@ -636,7 +633,6 @@ function Sidebar({
     return w || "320px";
   }, [isCollapsed]);
 
-  /* Tooltip callbacks — only wired when sidebar is actually collapsed */
   const tooltipCallbacks = isCollapsed
     ? { 
         onTooltipShow: handleTooltipShow, 
@@ -649,7 +645,7 @@ function Sidebar({
   const content = React.createElement(
     React.Fragment, null,
 
-    React.createElement(SellerProfile, { sellerName, sellerEmail, sellerPhone, sellerId: activeSellerId, onProfileClick: handleProfileClick, isCollapsed }),
+    React.createElement(SellerProfile, { sellerName: sellerNameResolved, sellerEmail: sellerEmailResolved, sellerPhone: sellerPhoneResolved, sellerId: activeSellerId, onProfileClick: handleProfileClick, isCollapsed }),
 
     React.createElement("div", { className: "sidebar__divider" }),
 
@@ -680,6 +676,13 @@ function Sidebar({
 
   return React.createElement(
     React.Fragment, null,
+
+    /* ── Logout confirmation modal ────────────────────────── */
+    React.createElement(LogoutConfirmModal, {
+      isOpen: showLogoutModal,
+      onYes:  handleLogoutConfirm,
+      onNo:   handleLogoutCancel,
+    }),
 
     /* ── Floating tooltip portal ──────────────────────────── */
     React.createElement(SidebarTooltip, tooltip),

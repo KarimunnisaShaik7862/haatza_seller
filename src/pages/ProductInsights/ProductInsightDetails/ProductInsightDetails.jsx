@@ -23,8 +23,8 @@ import {
   Pie,
   Cell
 } from "recharts";
-import { resolveSellerEmail } from "../../../utils/sellerSession";
-import { getProductDetails, getProductStats } from "../../../services/sellerService";
+import { resolveSellerEmail, resolveSellerId } from "../../../utils/sellerSession";
+import { getProductDetails, getProductStats, fetchSellerListings } from "../../../services/sellerService";
 import "./ProductInsightDetails.css";
 
 const FALLBACK_IMG =
@@ -68,13 +68,13 @@ const AnimatedCount = ({ value, duration = 800 }) => {
   return <>{count.toLocaleString()}</>;
 };
 
-// TrafficChart (PieChart) using Viewed, Interested, and Orders counters
-function TrafficChart({ reach, impression, sales }) {
-  const COLORS = ["#2962ff", "#10b981", "#ff6d00"];
+// TrafficChart (PieChart) using Viewed, Interested, Clicks, and Orders counters
+function TrafficChart({ reach, impression, clicks, sales }) {
   const data = [
-    { name: "Viewed", value: Number(reach) || 0 },
-    { name: "Interested", value: Number(impression) || 0 },
-    { name: "Orders", value: Number(sales) || 0 },
+    { name: "Viewed", value: Number(reach) || 0, color: "#2962ff" },
+    { name: "Interested", value: Number(impression) || 0, color: "#10b981" },
+    { name: "Clicks", value: Number(clicks) || 0, color: "#8b5cf6" },
+    { name: "Orders", value: Number(sales) || 0, color: "#b91c1c" },
   ].filter((item) => item.value > 0);
 
   const CustomTooltip = ({ active, payload }) => {
@@ -104,7 +104,7 @@ function TrafficChart({ reach, impression, sales }) {
         {data.length === 0 ? (
           <div style={{ color: "#64748b" }}>No traffic data available</div>
         ) : (
-          <ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <PieChart>
               <Pie
                 data={data}
@@ -113,10 +113,11 @@ function TrafficChart({ reach, impression, sales }) {
                 innerRadius={60}
                 outerRadius={90}
                 paddingAngle={5}
+                minAngle={15}
                 dataKey="value"
               >
                 {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
@@ -179,7 +180,7 @@ function RevenueChart({ trendReport }) {
             No trend report data available
           </div>
         ) : (
-          <ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart data={currentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f3f6" vertical={false} />
               <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
@@ -195,14 +196,27 @@ function RevenueChart({ trendReport }) {
 }
 
 const getCategoryName = (product) => {
+  if (!product) return "";
   if (typeof product.categoryName === "string" && product.categoryName) return product.categoryName;
+  if (Array.isArray(product.categoryName)) {
+    const firstStr = product.categoryName.find(c => typeof c === "string" && c);
+    if (firstStr) return firstStr;
+  }
   if (product.category) {
+    if (typeof product.category === "string" && product.category) return product.category;
+    if (Array.isArray(product.category)) {
+      const firstStr = product.category.find(c => typeof c === "string" && c);
+      if (firstStr) return firstStr;
+    }
     if (typeof product.category === "object") return product.category.name || product.category.title || "";
-    if (typeof product.category === "string") return product.category;
   }
   if (product.subCategory) {
+    if (typeof product.subCategory === "string" && product.subCategory) return product.subCategory;
+    if (Array.isArray(product.subCategory)) {
+      const firstStr = product.subCategory.find(c => typeof c === "string" && c);
+      if (firstStr) return firstStr;
+    }
     if (typeof product.subCategory === "object") return product.subCategory.name || product.subCategory.title || "";
-    if (typeof product.subCategory === "string") return product.subCategory;
   }
   return "";
 };
@@ -229,10 +243,7 @@ export default function ProductInsightDetails() {
     setLoading(true);
     setError(null);
     try {
-      const [detailsRes, statsRes] = await Promise.all([
-        getProductDetails(selectedId),
-        getProductStats(selectedId)
-      ]);
+      const detailsRes = await getProductDetails(selectedId);
 
       const candidates = [
         detailsRes?.message?.body?.product,
@@ -257,7 +268,39 @@ export default function ProductInsightDetails() {
       }
       setProductDetails(details);
 
-      const stats = statsRes?.message?.data || statsRes?.data || statsRes;
+      // Extract seller session email and ID
+      const email = resolveSellerEmail();
+      const sellerId = resolveSellerId();
+
+      // Fetch the actual seller_products response to extract categoryName
+      const listRes = await fetchSellerListings({ email, page: 1, limit: 100, type: "mylisting" });
+      const list = listRes?.products || [];
+      const matchingProduct = list.find(p => (p.Table_ID || p.tableId || p.id) === selectedId);
+
+      let categoryName = "";
+      if (matchingProduct) {
+        categoryName = getCategoryName(matchingProduct);
+      }
+      if (!categoryName && details) {
+        categoryName = getCategoryName(details);
+      }
+
+      // Parameter validation
+      if (!selectedId) {
+        console.error("Product Insights Details: Missing tableId validation. Skipping Product Stats API call.");
+      }
+      if (!categoryName) {
+        console.error("Product Insights Details: Missing categoryName validation. Skipping Product Stats API call.");
+      }
+
+      let stats = null;
+      if (selectedId && categoryName) {
+        const statsRes = await getProductStats({ sellerId, tableId: selectedId, categoryName });
+        stats = statsRes?.message?.data || statsRes?.data || statsRes;
+      } else {
+        console.warn("Product Stats API call skipped due to missing tableId or categoryName parameters.");
+      }
+
       setAnalyticsData(stats);
     } catch (err) {
       console.error(`Error loading insights for ${selectedId}:`, err);
@@ -460,6 +503,7 @@ export default function ProductInsightDetails() {
           <TrafficChart
             reach={viewsCount}
             impression={interestedCount}
+            clicks={clicksCount}
             sales={ordersCount}
           />
         </div>

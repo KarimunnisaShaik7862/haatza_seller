@@ -95,6 +95,13 @@
   gap: 24px;
 }
 
+@media (max-width: 1024px) {
+  .desktop-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 .desktop-left-side,
 .desktop-right-side {
   display: flex;
@@ -216,24 +223,23 @@
 
 /* ===== MOBILE VIEW STYLING ===== */
 .details-header-mobile {
-  position: sticky;
-  top: 0;
-  background: #2962FF; /* Solid blue header bar */
-  color: #ffffff;
-  height: 56px;
+  position: relative;
+  background: transparent;
+  color: var(--text-dark);
+  height: auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
+  justify-content: flex-start;
+  padding: 12px 16px 0;
   z-index: 50;
-  box-shadow: 0 2px 8px rgba(41, 98, 255, 0.2);
+  box-shadow: none;
 }
 
 .mobile-back-btn,
 .mobile-wallet-btn {
   background: transparent;
   border: none;
-  color: #ffffff;
+  color: var(--text-dark);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -248,7 +254,7 @@
 }
 
 .mobile-layout-container {
-  padding: 20px 16px 100px; /* Extra bottom padding to clear the fixed actions bar */
+  padding: 20px 16px 24px; /* Reduced bottom padding since actions are now in flow */
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -365,16 +371,14 @@
   margin: 0;
 }
 
-/* Mobile Fixed Bottom Buttons */
-.mobile-fixed-bottom-actions {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+/* Mobile Actions In Flow (not fixed bottom) */
+.mobile-actions-in-flow {
   background: #ffffff;
-  border-top: 1px solid #ECEFF5;
-  padding: 16px;
-  z-index: 100;
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
 }
 
 .mobile-actions-flex {

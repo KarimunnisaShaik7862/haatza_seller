@@ -222,7 +222,6 @@ const ReturnExchangeList = ({ items, activeTab, loading, error, refreshAction, s
       {/* MOBILE VIEW (CARDS) */}
       <div className="mobile-only mobile-order-cards">
         {items.map((item) => {
-          const reqDate = activeTab === "Exchange" ? item.exchangeDate : item.returnDate;
           return (
             <div
               key={item.TableID}
@@ -238,14 +237,10 @@ const ReturnExchangeList = ({ items, activeTab, loading, error, refreshAction, s
               <div className="mobile-order-details">
                 <p className="mobile-order-id">Order ID: #{item.orderId}</p>
                 <p className="mobile-order-name">Product: {item.items || "N/A"}</p>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
-                  <p className="mobile-order-size" style={{ margin: 0 }}>Size: {renderItemSize(item)}</p>
-                  <ReturnExchangeStatusBadge status={item.status} />
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
-                  <p className="mobile-order-ship" style={{ margin: 0 }}>Date: {formatDate(reqDate)}</p>
-                  <p style={{ margin: 0, fontWeight: 700, color: "#2962FF" }}>₹{item.totalAmount || 0}</p>
-                </div>
+                <p className="mobile-order-size">Size: {renderItemSize(item)}</p>
+                <p className="mobile-order-price" style={{ margin: "4px 0 0 0", fontWeight: 700, color: "#2962FF" }}>
+                  Price: ₹{item.totalAmount || 0}
+                </p>
               </div>
             </div>
           );

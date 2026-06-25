@@ -1,13 +1,12 @@
 import React from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
 
-const COLORS = ["#2962ff", "#10b981", "#6366f1"];
-
-export default function TrafficChart({ reach, impression, sales }) {
+export default function TrafficChart({ reach, impression, clicks, sales }) {
   const data = [
-    { name: "Viewed", value: reach || 0 },
-    { name: "Interested", value: impression || 0 },
-    { name: "Orders", value: sales || 0 },
+    { name: "Viewed", value: reach || 0, color: "#2962ff" },
+    { name: "Interested", value: impression || 0, color: "#10b981" },
+    { name: "Clicks", value: clicks || 0, color: "#6366f1" },
+    { name: "Orders", value: sales || 0, color: "#b91c1c" },
   ].filter(item => item.value > 0);
 
   const CustomTooltip = ({ active, payload }) => {
@@ -37,7 +36,7 @@ export default function TrafficChart({ reach, impression, sales }) {
         {data.length === 0 ? (
           <div style={{ color: "#64748b" }}>No traffic data available</div>
         ) : (
-          <ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <PieChart>
               <Pie
                 data={data}
@@ -46,10 +45,11 @@ export default function TrafficChart({ reach, impression, sales }) {
                 innerRadius={60}
                 outerRadius={90}
                 paddingAngle={5}
+                minAngle={15}
                 dataKey="value"
               >
                 {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip content={<CustomTooltip />} />

@@ -27,7 +27,7 @@
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 991px) {
   .ib-desktop-table-view {
     display: none;
   }
@@ -199,7 +199,7 @@
   background: #1a4fd8;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 991px) {
   .ib-page-outer {
     padding: 15px;
   }
@@ -266,6 +266,8 @@
   margin-top: 10px;
   margin-bottom: 4px;
   padding: 0 4px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .ib-products-heading {
@@ -279,6 +281,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .ib-selected-count-label {
@@ -349,7 +352,7 @@
   border-color: #d32f2f;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 991px) {
   .ib-products-section-header {
     flex-direction: column;
     align-items: stretch;

@@ -46,7 +46,7 @@ export default function ReturnsAnalytics({ returns }) {
         <p className="pi-chart-card-subtitle">Primary complaints registered during claims</p>
         
         <div style={{ width: "100%", height: 200, marginTop: 12 }}>
-          <ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart data={reasons} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f3f6" vertical={false} />
               <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />

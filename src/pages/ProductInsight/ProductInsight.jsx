@@ -369,6 +369,7 @@ export default function ProductInsight() {
             <TrafficChart
               reach={reach}
               impression={impression}
+              clicks={clicks}
               sales={sales}
             />
           </div>

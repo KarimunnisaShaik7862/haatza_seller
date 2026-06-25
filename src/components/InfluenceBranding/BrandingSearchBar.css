@@ -7,8 +7,12 @@
   padding: 14px 20px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.02);
   border: 1px solid rgba(229, 231, 235, 0.6);
-  gap: 20px;
+  gap: 16px;
   margin-bottom: 24px;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* ── Search Input ── */
@@ -18,11 +22,13 @@
   align-items: center;
   flex: 1;
   max-width: 440px;
+  min-width: 240px;
   background: #f8fafc;
   border: 1px solid rgba(229, 231, 235, 0.8);
   border-radius: 12px;
   padding: 0 14px;
   transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .ib-search-input-container:focus-within {
@@ -74,6 +80,8 @@
   padding: 4px;
   border-radius: 10px;
   gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .ib-tab-btn {
@@ -162,7 +170,7 @@
   box-shadow: 0 2px 8px rgba(41, 98, 255, 0.1);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 991px) {
   .ib-search-bar-wrap {
     flex-direction: column;
     align-items: stretch;
@@ -171,6 +179,7 @@
   }
   .ib-search-input-container {
     max-width: 100%;
+    min-width: 0; /* reset min-width when stacked */
   }
   .ib-select-multiple-btn {
     width: 100%;
@@ -182,5 +191,13 @@
   .ib-tab-btn {
     flex: 1;
     justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .ib-tab-btn {
+    padding: 8px 10px !important;
+    font-size: 12px !important;
+    gap: 4px !important;
   }
 }

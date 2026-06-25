@@ -483,13 +483,6 @@ const OrderDetailsPage = () => {
         <button className="mobile-back-btn" onClick={handleBackToOrders}>
           <ArrowLeft size={24} />
         </button>
-        <h2>Ordered Items</h2>
-        <button className="mobile-wallet-btn">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="4" width="20" height="16" rx="2" />
-            <path d="M12 4v16M2 12h20M16 8h2M16 16h2" />
-          </svg>
-        </button>
       </div>
 
       {/* ─── DESKTOP VIEW LAYOUT ────────────────────────────────────────── */}
@@ -690,8 +683,8 @@ const OrderDetailsPage = () => {
         </div>
 
 
-        {/* Mobile Fixed Bottom Action Area */}
-        <div className="mobile-fixed-bottom-actions">
+        {/* Mobile Action Buttons in flow */}
+        <div className="mobile-actions-in-flow">
           {isPlaced && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
               <div className="mobile-actions-flex">

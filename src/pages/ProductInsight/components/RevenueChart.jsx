@@ -68,7 +68,7 @@ export default function RevenueChart({ trendReport }) {
             No trend report data available
           </div>
         ) : (
-          <ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             {chartType === "area" ? (
               <AreaChart data={currentData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <defs>

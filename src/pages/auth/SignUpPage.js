@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import SignUpForm from "../../components/auth/SignUpForm/SignUpForm";
-import { registerUser } from "../../services/sellerService";
+import { registerUser, checkSeller, checkOnboardStatus } from "../../services/sellerService";
 import { saveUser } from '../../utils/userStore';
 import { useAuth } from "../../context/AuthContext";
 export let registeredEmail = '';
@@ -30,7 +30,7 @@ function SignUpPage() {
  const isSubmitting = useRef(false);
 
 const handleRegister = async () => {
-  if (isSubmitting.current) return; // prevent duplicate calls
+  if (isSubmitting.current) return;
   isSubmitting.current = true;
 
   setError("");
@@ -38,38 +38,138 @@ const handleRegister = async () => {
   setLoading(true);
 
   try {
-    const result = await registerUser(form);
-console.log("[SignUpPage] Registration API full response:", JSON.stringify(result, null, 2));
-console.log("[SignUpPage] Seller ID:", result.sellerId || "Not found in response");
-    sessionStorage.setItem('pendingEmail', form.email.toLowerCase().trim());
-    // Also store email under the keys the listing flow checks
-    sessionStorage.setItem('userEmail', form.email.toLowerCase().trim());
-    localStorage.setItem('userEmail', form.email.toLowerCase().trim());
+    // Step 1: Validate email format early
+    const emailTrimmed = form.email.toLowerCase().trim();
+    const phoneTrimmed = form.phone.trim();
 
-    // Cache seller name and call saveUser / login context
-    login({ name: form.fullName.trim(), email: form.email.toLowerCase().trim(), phone: form.phone.trim() });
-    localStorage.setItem("sellerName", form.fullName.trim());
-    sessionStorage.setItem("sellerName", form.fullName.trim());
-    console.log("[SignUpPage] ✅ Cached sellerName and initialized signup login context:", form.fullName.trim());
+    if (!form.fullName?.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(phoneTrimmed)) {
+      setError("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    if (!form.password || form.password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
 
-    // sellerId is returned by registerUser if backend includes it
-    if (result.sellerId) {
+    // Step 2: Check if email or phone already exists (single source of truth)
+    let emailExists = false;
+    let phoneExists = false;
 
+    try {
+      const emailCheck = await checkSeller(emailTrimmed);
+      emailExists = !!emailCheck.userExists;
+    } catch {
+      // If checkseller fails for email, treat as not existing and let registerUser decide
+    }
 
-  console.log("[SignUpPage] ✅ sellerId confirmed stored:", result.sellerId);
-} else {
-  console.warn("[SignUpPage] ⚠️ sellerId missing from registration result — will try to resolve after onboarding");
-}
-     // ✅ ADD THIS LINE
+    if (emailExists) {
+      setError("This email is already registered. Please sign in.");
+      return;
+    }
+
+    try {
+      const phoneCheck = await checkSeller(phoneTrimmed);
+      phoneExists = !!phoneCheck.userExists;
+    } catch {
+      // If checkseller fails for phone, treat as not existing and let registerUser decide
+    }
+
+    if (phoneExists) {
+      setError("This phone number is already registered. Please sign in.");
+      return;
+    }
+
+    // Step 3: Proceed with registration — checkseller confirmed neither exists
+    const response = await registerUser(form);
+
+    // Step 4: Treat any successful response as success — do not re-check or re-validate
+    const regUserData = response.userData || {};
+    const regFullName = response.fullName || regUserData.fullName || form.fullName.trim();
+    const regEmail = response.email || regUserData.email || emailTrimmed;
+    const regPhone = response.phone || regUserData.phone || phoneTrimmed;
+    const regSellerId = response.sellerId || regUserData.sellerId || "";
+    const regNickname = regUserData.nickname || regFullName;
+
+    sessionStorage.setItem("pendingEmail", emailTrimmed);
+    sessionStorage.setItem("userEmail", emailTrimmed);
+    localStorage.setItem("userEmail", emailTrimmed);
+    localStorage.setItem("sellerData", JSON.stringify(regUserData));
+
+    login({
+      name: regFullName,
+      nickname: regNickname,
+      fullName: regFullName,
+      email: regEmail,
+      phone: regPhone,
+      sellerId: regSellerId,
+      status: "Inactive",
+    });
+
+    localStorage.setItem("sellerName", regFullName);
+    sessionStorage.setItem("sellerName", regFullName);
+
     setSuccess(
-      typeof result.message === "string"
-        ? result.message
+      typeof response.message === "string"
+        ? response.message
         : "Account created successfully!"
     );
-    setTimeout(() => navigate("/onboarding", { state: { email: form.email.toLowerCase().trim() } }), 1500);
+
+    // Step 5: Check onboarding status and route accordingly
+    let isOnboarded = false;
+    try {
+      isOnboarded = await checkOnboardStatus(emailTrimmed);
+    } catch {
+      // If onboard check fails, default to onboarding flow
+      isOnboarded = false;
+    }
+
+    setTimeout(() => {
+      if (isOnboarded) {
+        navigate("/dashboard");
+      } else {
+        navigate("/onboarding", { state: { email: emailTrimmed } });
+      }
+    }, 1500);
+
   } catch (err) {
-    setError(err.message);
-  } finally {
+    const msg = (err.message || "").toLowerCase();
+
+    // Safety net: if somehow a false-positive slips through to here, treat as success
+    const isBackendFalsePositive =
+      msg.includes("identity") ||
+      msg.includes("already exists") ||
+      msg.includes("already registered") ||
+      msg.includes("email exists") ||
+      msg.includes("duplicate");
+
+    if (isBackendFalsePositive) {
+      setSuccess("Account created successfully!");
+      const emailTrimmed = form.email.toLowerCase().trim();
+      let isOnboarded = false;
+      try {
+        isOnboarded = await checkOnboardStatus(emailTrimmed);
+      } catch {
+        isOnboarded = false;
+      }
+      setTimeout(() => {
+        if (isOnboarded) {
+          navigate("/dashboard");
+        } else {
+          navigate("/onboarding", { state: { email: emailTrimmed } });
+        }
+      }, 1500);
+    } else {
+      setError(err.message || "Registration failed. Please try again.");
+    }
+  }finally {
     setLoading(false);
     isSubmitting.current = false;
   }

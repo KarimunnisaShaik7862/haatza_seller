@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -10,6 +10,7 @@ import {
   Truck,
   XCircle,
   PackageSearch,
+  ArrowLeft,
 } from "lucide-react";
 import { fetchSellerOrders } from "../../services/sellerService";
 import ConfirmedOrdersPage from "../../components/orders/ConfirmedOrdersPage/ConfirmedOrdersPage";
@@ -29,6 +30,7 @@ const CANCELLED_STATUSES = ["Order Cancelled"];
 
 const OrdersPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -309,72 +311,84 @@ const OrdersPage = () => {
             {showDatePicker && (
               <div className="orders-calendar-dropdown glass-card">
                 <div className="orders-calendar-sidebar">
-                  <button className="calendar-preset-btn" onClick={() => handleQuickPreset("today")}>Today</button>
-                  <button className="calendar-preset-btn" onClick={() => handleQuickPreset("yesterday")}>Yesterday</button>
-                  <button className="calendar-preset-btn" onClick={() => handleQuickPreset("last7")}>Last 7 Days</button>
-                  <button className="calendar-preset-btn" onClick={() => handleQuickPreset("last30")}>Last 30 Days</button>
-                  <button className="calendar-preset-btn" onClick={() => handleQuickPreset("thisMonth")}>This Month</button>
-                  <button className="calendar-preset-btn clear-btn" onClick={() => handleQuickPreset("clear")}>Clear Filter</button>
+                    <button className="calendar-preset-btn" onClick={() => handleQuickPreset("today")}>Today</button>
+                    <button className="calendar-preset-btn" onClick={() => handleQuickPreset("yesterday")}>Yesterday</button>
+                    <button className="calendar-preset-btn" onClick={() => handleQuickPreset("last7")}>Last 7 Days</button>
+                    <button className="calendar-preset-btn" onClick={() => handleQuickPreset("last30")}>Last 30 Days</button>
+                    <button className="calendar-preset-btn" onClick={() => handleQuickPreset("thisMonth")}>This Month</button>
+                    <button className="calendar-preset-btn clear-btn" onClick={() => handleQuickPreset("clear")}>Clear Filter</button>
+                  </div>
+                  <div className="orders-calendar-main">
+                    <button className="orders-calendar-close-btn" onClick={() => setShowDatePicker(false)}>&times;</button>
+                    <div className="orders-calendar-header">
+                      <button className="calendar-nav-btn" onClick={handlePrevMonth}>&larr;</button>
+                      <span className="calendar-month-label">{monthNames[calendarMonth]} {calendarYear}</span>
+                      <button className="calendar-nav-btn" onClick={handleNextMonth}>&rarr;</button>
+                    </div>
+                    <div className="orders-calendar-weekdays">
+                      <span>Su</span>
+                      <span>Mo</span>
+                      <span>Tu</span>
+                      <span>We</span>
+                      <span>Th</span>
+                      <span>Fr</span>
+                      <span>Sa</span>
+                    </div>
+                    <div className="orders-calendar-days-grid">
+                      {calendarDays.map((d, index) => (
+                        <button
+                          key={index}
+                          className={getDayClassNames(d.date)}
+                          disabled={!d.day}
+                          onClick={() => handleDayClick(d.date)}
+                          onMouseEnter={() => d.date && setHoverDate(d.date)}
+                        >
+                          {d.day}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="orders-calendar-main">
-                  <div className="orders-calendar-header">
-                    <button className="calendar-nav-btn" onClick={handlePrevMonth}>&larr;</button>
-                    <span className="calendar-month-label">{monthNames[calendarMonth]} {calendarYear}</span>
-                    <button className="calendar-nav-btn" onClick={handleNextMonth}>&rarr;</button>
-                  </div>
-                  <div className="orders-calendar-weekdays">
-                    <span>Su</span>
-                    <span>Mo</span>
-                    <span>Tu</span>
-                    <span>We</span>
-                    <span>Th</span>
-                    <span>Fr</span>
-                    <span>Sa</span>
-                  </div>
-                  <div className="orders-calendar-days-grid">
-                    {calendarDays.map((d, index) => (
-                      <button
-                        key={index}
-                        className={getDayClassNames(d.date)}
-                        disabled={!d.day}
-                        onClick={() => handleDayClick(d.date)}
-                        onMouseEnter={() => d.date && setHoverDate(d.date)}
-                      >
-                        {d.day}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+              )}
           </div>
         </div>
       </div>
 
-      <div className="orders-tabs glass-card">
+      <div className="orders-tabs">
         {TABS.map((tab) => {
           const Icon = tab.icon;
-          const count = grouped[tab.key]?.length || 0;
           const isActive = activeTab === tab.key;
+          const count = grouped[tab.key]?.length || 0;
           return (
             <button
               key={tab.key}
               className={`order-tab ${isActive ? "active" : ""}`}
               onClick={() => setActiveTab(tab.key)}
             >
-              <Icon size={18} />
+              {Icon && <Icon size={16} />}
               <span>{tab.label}</span>
               <span className="tab-badge">{count}</span>
               {isActive && (
                 <motion.div
+                  layoutId="activeTabUnderline"
                   className="tab-underline"
-                  layoutId="underline"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}
             </button>
           );
         })}
+      </div>
+
+      <div className="orders-status-dropdown-container">
+        <select
+          value={activeTab}
+          onChange={(e) => setActiveTab(e.target.value)}
+          className="orders-status-select"
+        >
+          <option value="confirmed">Confirmed Orders</option>
+          <option value="shipped">Shipped Orders</option>
+          <option value="cancelled">Cancelled Orders</option>
+        </select>
       </div>
 
       <AnimatePresence mode="wait">

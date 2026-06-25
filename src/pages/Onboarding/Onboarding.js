@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './Onboarding.css';
+import { checkOnboardStatus } from '../../services/sellerService';
 /* ─── Comprehensive world banks list ─────────────────────────── */
 const WORLD_BANKS = [
   'Abbey National Bank','ABN AMRO Bank','Abu Dhabi Commercial Bank','Abu Dhabi Islamic Bank',
@@ -552,6 +553,24 @@ function Stepper({ current }) {
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const checkActiveStatus = async () => {
+      const email = location.state?.email || sessionStorage.getItem("pendingEmail") || localStorage.getItem("userEmail") || "";
+      if (!email) return;
+      try {
+        const isActive = await checkOnboardStatus(email);
+        if (isActive) {
+          console.log("[OnboardingPage] Seller is already active. Redirecting to dashboard.");
+          navigate("/dashboard", { replace: true });
+        }
+      } catch (err) {
+        console.error("[OnboardingPage] Failed to verify onboard status on mount:", err);
+      }
+    };
+    checkActiveStatus();
+  }, [location.state?.email, navigate]);
+
   const [step,          setStep]          = useState(0);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError,   setSubmitError]   = useState('');
