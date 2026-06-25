@@ -56,7 +56,8 @@ const CancelShipmentPage = lazy(() => import("../components/orders/CancelShipmen
 const InfluenceBranding  = lazy(() => import("../pages/InfluenceBranding/InfluenceBranding"));
 const InfluenceBrandingDetails = lazy(() => import("../pages/InfluenceBranding/InfluenceBrandingDetails"));
 const WarehousePage = lazy(() => import("../pages/Warehouse/Warehouse"));
-
+const QualityInsightsPage = lazy(() => import("../pages/qualityinsights/QualityInsights"));
+const GrowthCentral = lazy(() => import("../pages/GrowthCentral/GrowthCentral"));
 // ─── Loading Spinner ──────────────────────────────────────────────────────────
 const PageLoader = () => (
   <div style={{
@@ -190,10 +191,10 @@ function AppRoutes() {
           <Route path="/influencer"                 element={<InfluenceBranding />} />
           <Route path="/dashboard/influencer/details/:tableId" element={<InfluenceBrandingDetails />} />
           <Route path="/influencer/details/:tableId"           element={<InfluenceBrandingDetails />} />
-          <Route path="/dashboard/growthcentral"    element={<PlaceholderPage title="Growth Central" />} />
-          <Route path="/growthcentral"              element={<PlaceholderPage title="Growth Central" />} />
-          <Route path="/dashboard/qualityinsights"  element={<PlaceholderPage title="Quality Insights" />} />
-          <Route path="/qualityinsights"            element={<PlaceholderPage title="Quality Insights" />} />
+          <Route path="/dashboard/growthcentral"    element={<GrowthCentral />} />
+          <Route path="/growthcentral"              element={<GrowthCentral />} />
+          <Route path="/dashboard/qualityinsights"  element={<QualityInsightsPage />} />
+          <Route path="/qualityinsights"            element={<QualityInsightsPage />} />
           <Route path="/dashboard/referandearn"     element={<ReferEarn />} />
           <Route path="/referandearn"               element={<ReferEarn />} />
           <Route path="/referearn"                  element={<ReferEarn />} />

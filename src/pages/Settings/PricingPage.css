@@ -53,6 +53,16 @@
   margin-top: 4px;
 }
 
+.pp-back-btn svg {
+  color: var(--pp-muted);
+  stroke: currentColor;
+  display: block;
+}
+
+.pp-back-btn:hover svg {
+  color: var(--pp-primary);
+}
+
 .pp-back-btn:hover {
   background: var(--pp-bg);
   color: var(--pp-primary);

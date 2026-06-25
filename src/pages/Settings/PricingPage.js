@@ -314,12 +314,12 @@ function PricingPage() {
       {/* ── Hero ── */}
       <header className="pp-hero">
         <button
-          className="pp-back-btn"
-          onClick={() => navigate("/dashboard/settings")}
-          aria-label="Back to settings"
-        >
-          <ChevronLeft size={16} />
-        </button>
+  className="pp-back-btn"
+  onClick={() => navigate("/dashboard/settings")}
+  aria-label="Back to settings"
+>
+  <ChevronLeft size={18} strokeWidth={2.5} color="currentColor" />
+</button>
 
         <div className="pp-hero-left">
           <span className="pp-hero-badge">

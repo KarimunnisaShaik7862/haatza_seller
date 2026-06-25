@@ -549,6 +549,60 @@ function Stepper({ current }) {
   );
 }
 
+/* ─── FAQ Accordion ───────────────────────────────────────────── */
+const FAQ_ITEMS = [
+  {
+    q: 'How do I update the details linked to my GSTIN?',
+    a: 'You can update your details by visiting the Government portal and modifying the information on your GSTIN. Your business details will automatically be fetched from your GSTIN.',
+  },
+  {
+    q: 'Where will this information be used?',
+    a: 'Your GSTIN and signature will be used to issue an invoice to the buyer.',
+  },
+  {
+    q: 'Can I create a seller account with a composite GSTIN?',
+    a: 'As per Government regulations, sellers with a composite GSTIN cannot sell on e-commerce platforms. Our partner TaxBuddy can help you in getting a regular GSTIN, or you can apply for one directly from the Government portal.',
+  },
+  
+];
+
+function FaqAccordion() {
+  const [openIndex, setOpenIndex] = useState(0);
+  return (
+    <div className="faq-section">
+      <h3 className="faq-title">Frequently Asked Questions</h3>
+      <div className="faq-list">
+        {FAQ_ITEMS.map((item, i) => {
+          const isOpen = openIndex === i;
+          return (
+            <div key={i} className={`faq-item${isOpen ? ' faq-item--open' : ''}`}>
+              <button
+                className="faq-question"
+                onClick={() => setOpenIndex(isOpen ? -1 : i)}
+                aria-expanded={isOpen}
+              >
+                <span>{item.q}</span>
+                <svg
+                  className={`faq-chevron${isOpen ? ' faq-chevron--open' : ''}`}
+                  width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+                >
+                  <polyline points="18 15 12 9 6 15"/>
+                </svg>
+              </button>
+              {isOpen && (
+                <div className="faq-answer">
+                  <p>{item.a}</p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Onboarding Page ────────────────────────────────────── */
 export default function OnboardingPage() {
   const navigate = useNavigate();
@@ -575,8 +629,9 @@ export default function OnboardingPage() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError,   setSubmitError]   = useState('');
 
+  // ── CHANGED: noGstin defaults to false so GSTIN field shows first ──
   const [form, setForm] = useState({
-    gstin: '', noGstin: true, tradeName: '', panCard: '',
+    gstin: '', noGstin: false, tradeName: '', panCard: '',
     houseNo: '', roadName: '', pinCode: '', city: '', state: '', country: '', landmark: '',
     bankName: '', accountHolderName: '', accountNumber: '', reAccountNumber: '', ifscCode: '',
   });
@@ -1048,94 +1103,122 @@ if (sellerId) {
 
           {/* ── Step 0: Business Details ── */}
           {step === 0 && (
-            <div className="ob-body">
-              <h2 className="ob-section-title">Business Details</h2>
-              <p className="ob-section-sub">Provide your official business entity details (GSTIN or PAN).</p>
+  <div className="ob-body">
+    <h2 className="ob-section-title">Business Details</h2>
+    <p className="ob-section-sub">Do you have a GSTIN? Enter it below to get started.</p>
 
-              <FormField label="Trade Name" required error={errors.tradeName}>
-                <input
-                  className={`form-input ${errors.tradeName ? 'input-error' : ''}`}
-                  type="text" placeholder="Trade Name"
-                  value={form.tradeName}
-                  onChange={(e) => handleChange('tradeName', e.target.value)}
-                />
-              </FormField>
-
-              <label className="checkbox-label">
-                <input
-                  type="checkbox" className="checkbox-input" checked={form.noGstin}
-                  onChange={(e) => {
-                    handleChange('noGstin', e.target.checked);
-                    if (e.target.checked) { handleChange('gstin', ''); setGstinStatus('idle'); }
-                  }}
-                />
-                <span className="checkbox-text">I do not have a GSTIN (No GST)</span>
-              </label>
-
-              {/* GSTIN field */}
-              {!form.noGstin && (() => {
-                const isValid = !errors.gstin && form.gstin.length === 15 && gstinStatus !== 'exists';
-                return (
-                  <FormField label="GSTIN" required error={errors.gstin}>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className={`form-input ${errors.gstin ? 'input-error' : isValid ? 'input-valid' : ''}`}
-                        style={{ paddingRight: 40 }}
-                        type="text" placeholder="e.g. 22ABCDE1234F1Z5" maxLength={15}
-                        value={form.gstin}
-                        onChange={(e) => handleChange('gstin', e.target.value.toUpperCase())}
-                      />
-                      <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex' }}>
-                        {gstinStatus === 'checking' ? (
-                          <SpinnerIcon />
-                        ) : isValid ? (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20,6 9,17 4,12"/>
-                          </svg>
-                        ) : null}
-                      </span>
-                    </div>
-                    {!errors.gstin && (
-                      <span className="field-hint">
-                        Format: 2-digit state code + PAN + 1Z + check digit (15 chars) · {form.gstin.length}/15
-                      </span>
-                    )}
-                    <GstinStatusBadge status={gstinStatus} />
-                  </FormField>
-                );
-              })()}
-
-              {/* PAN field */}
-              {form.noGstin && (() => {
-                const isValid = !errors.panCard && form.panCard.length === 10 && validatePAN(form.panCard);
-                return (
-                  <FormField label="PAN Card Number" required error={errors.panCard}>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className={`form-input ${errors.panCard ? 'input-error' : isValid ? 'input-valid' : ''}`}
-                        style={{ paddingRight: 40 }}
-                        type="text" placeholder="e.g. ABCDE1234F"
-                        value={form.panCard} maxLength={10}
-                        onChange={(e) => handleChange('panCard', e.target.value.toUpperCase())}
-                      />
-                      {isValid && (
-                        <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex' }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20,6 9,17 4,12"/>
-                          </svg>
-                        </span>
-                      )}
-                    </div>
-                    {!errors.panCard && (
-                      <span className="field-hint">
-                        Format: 5 letters + 4 digits + 1 letter · {form.panCard.length}/10
-                      </span>
-                    )}
-                  </FormField>
-                );
-              })()}
-            </div>
+    {/* GSTIN field — always visible */}
+    {(() => {
+      const isValid = !errors.gstin && form.gstin.length === 15 && gstinStatus !== 'exists';
+      return (
+        <FormField label="GSTIN" required={!form.noGstin} error={!form.noGstin ? errors.gstin : undefined}>
+          <div style={{ position: 'relative' }}>
+            <input
+              className={`form-input ${!form.noGstin && errors.gstin ? 'input-error' : !form.noGstin && isValid ? 'input-valid' : ''}`}
+              style={{ paddingRight: 40, opacity: form.noGstin ? 0.45 : 1 }}
+              type="text" placeholder="e.g. 22ABCDE1234F1Z5" maxLength={15}
+              value={form.gstin}
+              disabled={form.noGstin}
+              onChange={(e) => handleChange('gstin', e.target.value.toUpperCase())}
+            />
+            <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex' }}>
+              {!form.noGstin && gstinStatus === 'checking' ? (
+                <SpinnerIcon />
+              ) : !form.noGstin && isValid ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20,6 9,17 4,12"/>
+                </svg>
+              ) : null}
+            </span>
+          </div>
+          {!form.noGstin && !errors.gstin && (
+            <span className="field-hint">
+              Format: 2-digit state code + PAN + 1Z + check digit (15 chars) · {form.gstin.length}/15
+            </span>
           )}
+          {!form.noGstin && <GstinStatusBadge status={gstinStatus} />}
+        </FormField>
+      );
+    })()}
+
+    {/* Checkbox */}
+    <label className="checkbox-label">
+      <input
+        type="checkbox" className="checkbox-input" checked={form.noGstin}
+        onChange={(e) => {
+          handleChange('noGstin', e.target.checked);
+          if (e.target.checked) { handleChange('gstin', ''); setGstinStatus('idle'); }
+          else { handleChange('panCard', ''); }
+        }}
+      />
+      <span className="checkbox-text">I don't have a GSTIN</span>
+    </label>
+
+    {/* No-GST nudge message */}
+    {form.noGstin && (
+      <div className="no-gstin-nudge">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <span>No GST? No problem! Start selling with just your EID in minutes.</span>
+      </div>
+    )}
+
+    {/* Trade Name — shown when noGstin is checked */}
+    {form.noGstin && (
+      <FormField label="Trade Name" required error={errors.tradeName}>
+        <input
+          className={`form-input ${errors.tradeName ? 'input-error' : ''}`}
+          type="text" placeholder="Trade Name"
+          value={form.tradeName}
+          onChange={(e) => handleChange('tradeName', e.target.value)}
+        />
+      </FormField>
+    )}
+
+    {/* Trade Name — shown when noGstin is NOT checked (GSTIN flow) */}
+    {!form.noGstin && (
+      <FormField label="Trade Name" required error={errors.tradeName}>
+        <input
+          className={`form-input ${errors.tradeName ? 'input-error' : ''}`}
+          type="text" placeholder="Trade Name"
+          value={form.tradeName}
+          onChange={(e) => handleChange('tradeName', e.target.value)}
+        />
+      </FormField>
+    )}
+
+    {/* PAN field — shown only when noGstin is checked */}
+    {form.noGstin && (() => {
+      const isValid = !errors.panCard && form.panCard.length === 10 && validatePAN(form.panCard);
+      return (
+        <FormField label="PAN Card Number" required error={errors.panCard}>
+          <div style={{ position: 'relative' }}>
+            <input
+              className={`form-input ${errors.panCard ? 'input-error' : isValid ? 'input-valid' : ''}`}
+              style={{ paddingRight: 40 }}
+              type="text" placeholder="e.g. ABCDE1234F"
+              value={form.panCard} maxLength={10}
+              onChange={(e) => handleChange('panCard', e.target.value.toUpperCase())}
+            />
+            {isValid && (
+              <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20,6 9,17 4,12"/>
+                </svg>
+              </span>
+            )}
+          </div>
+          {!errors.panCard && (
+            <span className="field-hint">
+              Format: 5 letters + 4 digits + 1 letter · {form.panCard.length}/10
+            </span>
+          )}
+        </FormField>
+      );
+    })()}
+  </div>
+)}
 
           {/* ── Step 1: Pickup Address ── */}
           {step === 1 && (
@@ -1410,6 +1493,9 @@ if (sellerId) {
                   </FormField>
                 );
               })()}
+
+              {/* ── FAQ Section ── */}
+              <FaqAccordion />
             </div>
           )}
 
